@@ -1,0 +1,53 @@
+version: '3.7'
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: docker/backend.dockerfile
+    container_name: fastApi-api
+    hostname: fastApi-api
+    env_file:
+      - .env
+    ports:
+      - '8000:8000'
+    tty: true
+    depends_on:
+      - db
+    volumes:
+      - $PWD:/home
+    command: bash -c 'prestart.sh; gunicorn --bind 0.0.0.0:8000 -w 4 -k uvicorn.workers.UvicornWorker app.main:app;'
+  db:
+    image: postgres:12
+    container_name: fastapi-db
+    hostname: fastapi-db
+    ports:
+      - '5432:5432'
+    volumes:
+      - project-data:/var/lib/postgresql/data/pgdata
+    env_file:
+      - .env
+    environment:
+      - PGDATA=/var/lib/postgresql/data/pgdata
+
+  redis:
+    restart: always
+    image: redis
+    container_name: fastapi-redis
+    hostname: fastapi-redis
+    expose:
+      - "6379"
+
+  celeryworker:
+    build:
+      context: .
+      dockerfile: docker/celeryworker.dockerfile
+    depends_on:
+      - db
+      - redis
+    env_file:
+      - .env
+    command: "bash worker-start.sh"
+
+volumes:
+  project-data:
