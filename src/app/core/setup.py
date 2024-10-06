@@ -1,16 +1,18 @@
 from collections.abc import AsyncGenerator, Callable
 from contextlib import _AsyncGeneratorContextManager, asynccontextmanager
 from typing import Any
+from starlette.middleware import Middleware
+from starlette.middleware.sessions import SessionMiddleware
+from starlette_admin.contrib.sqla import Admin
+
+from ..admin import UsernameAndPasswordProvider, initialize_admin
 
 import anyio
 import fastapi
 import redis.asyncio as redis
-from arq import create_pool
-from arq.connections import RedisSettings
 from fastapi import APIRouter, Depends, FastAPI
 from fastapi.openapi.docs import get_redoc_html, get_swagger_ui_html
 from fastapi.openapi.utils import get_openapi
-
 from ..api.dependencies import get_current_superuser
 from ..middleware.client_cache_middleware import ClientCacheMiddleware
 from .config import (
@@ -22,11 +24,12 @@ from .config import (
     RedisCacheSettings,
     RedisQueueSettings,
     RedisRateLimiterSettings,
-    settings,
+    settings, CryptSettings,
 )
 from .db.database import Base, async_engine as engine
 from .utils import cache, queue, rate_limit
 from ..models import *
+
 
 # -------------- database --------------
 async def create_tables() -> None:
@@ -36,22 +39,24 @@ async def create_tables() -> None:
 
 # -------------- cache --------------
 async def create_redis_cache_pool() -> None:
-    cache.pool = redis.ConnectionPool.from_url(settings.REDIS_CACHE_URL)
-    cache.client = redis.Redis.from_pool(cache.pool)  # type: ignore
+    # cache.pool = redis.ConnectionPool.from_url(settings.REDIS_CACHE_URL)
+    # cache.client = redis.Redis.from_pool(cache.pool)  # type: ignore
+    pass
 
 
 async def close_redis_cache_pool() -> None:
-    await cache.client.aclose()  # type: ignore
-
+    # await cache.client.aclose()  # type: ignore
+    pass
 
 # -------------- queue --------------
 async def create_redis_queue_pool() -> None:
-    queue.pool = await create_pool(RedisSettings(host=settings.REDIS_QUEUE_HOST, port=settings.REDIS_QUEUE_PORT))
+    # queue.pool = await create_pool(RedisSettings(host=settings.REDIS_QUEUE_HOST, port=settings.REDIS_QUEUE_PORT))
+    pass
 
 
 async def close_redis_queue_pool() -> None:
-    await queue.pool.aclose()  # type: ignore
-
+    # await queue.pool.aclose()  # type: ignore
+    pass
 
 # -------------- rate limit --------------
 async def create_redis_rate_limit_pool() -> None:
@@ -70,16 +75,16 @@ async def set_threadpool_tokens(number_of_tokens: int = 100) -> None:
 
 
 def lifespan_factory(
-    settings: (
-        DatabaseSettings
-        | RedisCacheSettings
-        | AppSettings
-        | ClientSideCacheSettings
-        | RedisQueueSettings
-        | RedisRateLimiterSettings
-        | EnvironmentSettings
-    ),
-    create_tables_on_start: bool = True,
+        settings: (
+                DatabaseSettings
+                | RedisCacheSettings
+                | AppSettings
+                | ClientSideCacheSettings
+                | RedisQueueSettings
+                | RedisRateLimiterSettings
+                | EnvironmentSettings
+        ),
+        create_tables_on_start: bool = True,
 ) -> Callable[[FastAPI], _AsyncGeneratorContextManager[Any]]:
     """Factory to create a lifespan async context manager for a FastAPI app."""
 
@@ -115,18 +120,19 @@ def lifespan_factory(
 
 # -------------- application --------------
 def create_application(
-    router: APIRouter,
-    settings: (
-        DatabaseSettings
-        | RedisCacheSettings
-        | AppSettings
-        | ClientSideCacheSettings
-        | RedisQueueSettings
-        | RedisRateLimiterSettings
-        | EnvironmentSettings
-    ),
-    create_tables_on_start: bool = True,
-    **kwargs: Any,
+        router: APIRouter,
+        settings: (
+                DatabaseSettings
+                | RedisCacheSettings
+                | AppSettings
+                | ClientSideCacheSettings
+                | RedisQueueSettings
+                | RedisRateLimiterSettings
+                | EnvironmentSettings
+                | CryptSettings
+        ),
+        create_tables_on_start: bool = True,
+        **kwargs: Any,
 ) -> FastAPI:
     """Creates and configures a FastAPI application based on the provided settings.
 
@@ -182,9 +188,17 @@ def create_application(
         kwargs.update({"docs_url": None, "redoc_url": None, "openapi_url": None})
 
     lifespan = lifespan_factory(settings, create_tables_on_start=create_tables_on_start)
-
     application = FastAPI(lifespan=lifespan, **kwargs)
     application.include_router(router)
+
+    # Admin Settings
+    admin = Admin(
+        engine, title="Example: SQLAlchemy",
+        auth_provider=UsernameAndPasswordProvider(),
+        middlewares=[Middleware(SessionMiddleware, secret_key=settings.SECRET_KEY)],
+    )
+    initialize_admin(admin)
+    admin.mount_to(application)
 
     if isinstance(settings, ClientSideCacheSettings):
         application.add_middleware(ClientCacheMiddleware, max_age=settings.CLIENT_CACHE_MAX_AGE)

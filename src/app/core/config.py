@@ -1,6 +1,5 @@
 import os
 from enum import Enum
-
 from pydantic_settings import BaseSettings
 from starlette.config import Config
 
@@ -117,7 +116,7 @@ class Settings(
     RedisQueueSettings,
     RedisRateLimiterSettings,
     DefaultRateLimitSettings,
-    EnvironmentSettings,
+    EnvironmentSettings
 ):
     pass
 

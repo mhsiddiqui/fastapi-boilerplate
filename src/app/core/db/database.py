@@ -1,6 +1,7 @@
 from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.ext.asyncio.session import AsyncSession
 from sqlalchemy.orm import DeclarativeBase, MappedAsDataclass, sessionmaker
+from starlette_admin.contrib.sqla import Admin
 
 from ..config import settings
 
@@ -22,3 +23,5 @@ async def async_get_db() -> AsyncSession:
     async_session = local_session
     async with async_session() as db:
         yield db
+
+admin = Admin(async_engine, title="BabyGin Admin")
