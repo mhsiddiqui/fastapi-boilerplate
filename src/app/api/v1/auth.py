@@ -1,14 +1,14 @@
 from datetime import timedelta
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Request, Response
+from fastapi import APIRouter, Depends, Response
+from fastapi import Request
 from fastapi.security import OAuth2PasswordRequestForm
+from fastcrud.exceptions.http_exceptions import UnauthorizedException
+from jose import JWTError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ...core.config import settings
 from ...core.db.database import async_get_db
-from ...core.exceptions.http_exceptions import UnauthorizedException
-from ...core.schemas import Token
 from ...core.security import (
     ACCESS_TOKEN_EXPIRE_MINUTES,
     authenticate_user,
@@ -16,15 +16,18 @@ from ...core.security import (
     create_refresh_token,
     verify_token,
 )
+from ...core.security import blacklist_token, oauth2_scheme
+from ...core.settings import settings
+from ...schemas.token import Token
 
-router = APIRouter(tags=["login"])
+router = APIRouter(tags=["Authentication"], prefix='/auth')
 
 
-@router.post("/login", response_model=Token)
+@router.post("/login/", response_model=Token)
 async def login_for_access_token(
-    response: Response,
-    form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
-    db: Annotated[AsyncSession, Depends(async_get_db)],
+        response: Response,
+        form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
+        db: Annotated[AsyncSession, Depends(async_get_db)],
 ) -> dict[str, str]:
     user = await authenticate_user(username_or_email=form_data.username, password=form_data.password, db=db)
     if not user:
@@ -43,7 +46,7 @@ async def login_for_access_token(
     return {"access_token": access_token, "token_type": "bearer"}
 
 
-@router.post("/refresh")
+@router.post("/refresh/")
 async def refresh_access_token(request: Request, db: AsyncSession = Depends(async_get_db)) -> dict[str, str]:
     refresh_token = request.cookies.get("refresh_token")
     if not refresh_token:
@@ -55,3 +58,17 @@ async def refresh_access_token(request: Request, db: AsyncSession = Depends(asyn
 
     new_access_token = await create_access_token(data={"sub": user_data.username_or_email})
     return {"access_token": new_access_token, "token_type": "bearer"}
+
+
+@router.post("/logout")
+async def logout(
+        response: Response, access_token: str = Depends(oauth2_scheme), db: AsyncSession = Depends(async_get_db)
+) -> dict[str, str]:
+    try:
+        await blacklist_token(token=access_token, db=db)
+        response.delete_cookie(key="refresh_token")
+
+        return {"message": "Logged out successfully"}
+
+    except JWTError:
+        raise UnauthorizedException("Invalid token.")

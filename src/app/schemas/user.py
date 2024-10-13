@@ -1,9 +1,13 @@
 from datetime import datetime
-from typing import Annotated
+from typing import Annotated, Optional, Union
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from fastapi import File, Form, UploadFile
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_serializer
 
-from ..core.schemas import PersistentDeletion, TimestampSchema, UUIDSchema
+from .base import BaseSchema
+from ..utils.constants import Messages
+from ..utils.exceptions.http_exceptions import CustomValidationException
+from ..utils.util_methods import UtilMethods
 
 
 class UserBase(BaseModel):
@@ -12,48 +16,65 @@ class UserBase(BaseModel):
     email: Annotated[EmailStr, Field(examples=["user.userson@example.com"])]
 
 
-class User(TimestampSchema, UserBase, UUIDSchema, PersistentDeletion):
-    profile_image_url: Annotated[str, Field(default="https://www.profileimageurl.com")]
-    hashed_password: str
-    is_superuser: bool = False
-    tier_id: int | None = None
-
-
 class UserRead(BaseModel):
     id: int
 
     name: Annotated[str, Field(min_length=2, max_length=30, examples=["User Userson"])]
     username: Annotated[str, Field(min_length=2, max_length=20, pattern=r"^[a-z0-9]+$", examples=["userson"])]
     email: Annotated[EmailStr, Field(examples=["user.userson@example.com"])]
-    profile_image_url: str
-    tier_id: int | None
+    profile_image: Optional[str] = None
+
+    @field_serializer('profile_image')
+    def serialize_profile_image(self, profile_image: str, _info):
+        return UtilMethods.get_absolute_url(profile_image)
 
 
-class UserCreate(UserBase):
+class UserCreate(UserBase, BaseSchema):
     model_config = ConfigDict(extra="forbid")
+    password: Annotated[
+        str, Field(pattern=r"^.{8,}|[0-9]+|[A-Z]+|[a-z]+|[^a-zA-Z0-9]+$", examples=["Str1ngst!"])
+    ]
 
-    password: Annotated[str, Field(pattern=r"^.{8,}|[0-9]+|[A-Z]+|[a-z]+|[^a-zA-Z0-9]+$", examples=["Str1ngst!"])]
+    async def validate_email(self, email, crud, db):
+        email_row = await crud.exists(db=db, email=email)
+        if email_row:
+            raise CustomValidationException(message=Messages.EMAIL_ALREADY_EXISTS, field='email')
+        return email
+
+    async def validate_username(self, username, crud, db):
+        username_row = await crud.exists(db=db, username=username)
+        if username_row:
+            raise CustomValidationException(message=Messages.USERNAME_ALREADY_EXISTS, field='username')
+        return username
+
+    async def create(self, crud, db):
+        from ..core.security import get_password_hash
+
+        user_data = self.model_dump()
+        user_data["password"] = get_password_hash(password=user_data["password"])
+        created_user: UserRead = await crud.create(db=db, object=UserCreate(**user_data))
+        return created_user
 
 
 class UserCreateInternal(UserBase):
-    hashed_password: str
+    password: str
 
 
-class UserUpdate(BaseModel):
+class UserUpdate(BaseSchema):
     model_config = ConfigDict(extra="forbid")
+    # name: Annotated[str | None, Field(min_length=2, max_length=30, examples=["User Userberg"], default=None)]
+    name: Annotated[
+        Union[str, None],
+        Form()
+    ] = None
+    profile_image: Annotated[bytes | None, UploadFile] = None
 
-    name: Annotated[str | None, Field(min_length=2, max_length=30, examples=["User Userberg"], default=None)]
-    username: Annotated[
-        str | None, Field(min_length=2, max_length=20, pattern=r"^[a-z0-9]+$", examples=["userberg"], default=None)
-    ]
-    email: Annotated[EmailStr | None, Field(examples=["user.userberg@example.com"], default=None)]
-    profile_image_url: Annotated[
-        str | None,
-        Field(
-            pattern=r"^(https?|ftp)://[^\s/$.?#].[^\s]*$", examples=["https://www.profileimageurl.com"], default=None
-        ),
-    ]
-
+    async def update(self, crud, db, **kwargs):
+        data = self.model_dump()
+        if not data.get('profile_image'):
+            data.pop('profile_image', None)
+        updated: UserRead = await crud.update(db=db, object=data, **kwargs)
+        return updated
 
 class UserUpdateInternal(UserUpdate):
     updated_at: datetime

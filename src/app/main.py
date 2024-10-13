@@ -1,5 +1,13 @@
 from .api import router
-from .core.config import settings
-from .core.setup import create_application
+from .core.settings import settings
+from .core.setup import ApplicationFactory
+from fastapi_babel import Babel, BabelConfigs, _
 
-app = create_application(router=router, settings=settings)
+configs = BabelConfigs(
+    ROOT_DIR=str(settings.BASE_DIR / "src"),
+    BABEL_DEFAULT_LOCALE="en",
+    BABEL_TRANSLATION_DIRECTORY="locale",
+)
+babel = Babel(configs=configs)
+
+app = ApplicationFactory(router=router, settings=settings).init()

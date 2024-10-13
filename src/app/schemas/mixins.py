@@ -5,13 +5,6 @@ from typing import Any
 from pydantic import BaseModel, Field, field_serializer
 
 
-class HealthCheck(BaseModel):
-    name: str
-    version: str
-    description: str
-
-
-# -------------- mixins --------------
 class UUIDSchema(BaseModel):
     uuid: uuid_pkg.UUID = Field(default_factory=uuid_pkg.uuid4)
 
@@ -45,26 +38,3 @@ class PersistentDeletion(BaseModel):
             return deleted_at.isoformat()
 
         return None
-
-
-# -------------- token --------------
-class Token(BaseModel):
-    access_token: str
-    token_type: str
-
-
-class TokenData(BaseModel):
-    username_or_email: str
-
-
-class TokenBlacklistBase(BaseModel):
-    token: str
-    expires_at: datetime
-
-
-class TokenBlacklistCreate(TokenBlacklistBase):
-    pass
-
-
-class TokenBlacklistUpdate(TokenBlacklistBase):
-    pass

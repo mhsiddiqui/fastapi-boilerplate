@@ -1,7 +1,7 @@
 import json
 
-from starlette.requests import Request
-from starlette.responses import Response, RedirectResponse
+from fastapi.requests import Request
+from fastapi.responses import Response, RedirectResponse
 from starlette_admin.auth import AdminConfig, AdminUser, AuthProvider
 from starlette_admin.exceptions import FormValidationError, LoginFailed
 

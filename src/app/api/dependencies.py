@@ -1,37 +1,38 @@
 from typing import Annotated, Any
 
 from fastapi import Depends, HTTPException, Request
+from fastcrud.exceptions.http_exceptions import UnauthorizedException, ForbiddenException
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..core.config import settings
 from ..core.db.database import async_get_db
-from ..core.exceptions.http_exceptions import ForbiddenException, UnauthorizedException
 from ..core.logger import logging
 from ..core.security import oauth2_scheme, verify_token
 from ..crud.crud_users import crud_users
+from ..utils.constants import Messages
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_LIMIT = settings.DEFAULT_RATE_LIMIT_LIMIT
-DEFAULT_PERIOD = settings.DEFAULT_RATE_LIMIT_PERIOD
-
 
 async def get_current_user(
-    token: Annotated[str, Depends(oauth2_scheme)], db: Annotated[AsyncSession, Depends(async_get_db)]
+        token: Annotated[str, Depends(oauth2_scheme)], db: Annotated[AsyncSession, Depends(async_get_db)]
 ) -> dict[str, Any] | None:
     token_data = await verify_token(token, db)
     if token_data is None:
-        raise UnauthorizedException("User not authenticated.")
+        raise UnauthorizedException(Messages.NOT_AUTHENTICATED)
+
+    filters = {'db': db, 'is_deleted': False, 'is_active': True}
 
     if "@" in token_data.username_or_email:
-        user: dict | None = await crud_users.get(db=db, email=token_data.username_or_email, is_deleted=False)
+        filters['email'] = token_data.username_or_email
     else:
-        user = await crud_users.get(db=db, username=token_data.username_or_email, is_deleted=False)
+        filters['username'] = token_data.username_or_email
+
+    user = await crud_users.get(**filters)
 
     if user:
         return user
 
-    raise UnauthorizedException("User not authenticated.")
+    raise UnauthorizedException(Messages.NOT_AUTHENTICATED)
 
 
 async def get_optional_user(request: Request, db: AsyncSession = Depends(async_get_db)) -> dict | None:

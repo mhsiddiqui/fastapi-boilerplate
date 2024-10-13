@@ -7,7 +7,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm.session import Session
 
-from src.app.core.config import settings
+from src.app.core.settings import settings
 from src.app.main import app
 
 DATABASE_URI = settings.POSTGRES_URI

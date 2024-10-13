@@ -1,20 +1,40 @@
-import os
 from enum import Enum
+from pathlib import Path
+from pydoc import locate
+from typing import List
+
 from pydantic_settings import BaseSettings
 from starlette.config import Config
 
-current_file_dir = os.path.dirname(os.path.realpath(__file__))
-env_path = os.path.join(current_file_dir, "..", "..", ".env")
+BASE_DIR = Path(__file__).resolve(strict=True).parent.parent.parent.parent.parent
+env_path = str(BASE_DIR / '.env')
 config = Config(env_path)
 
 
+class Middleware(object):
+    def __init__(self, middleware_class, args=None, kwargs=None):
+        self.middleware_class = locate(middleware_class)
+        self.args = args or []
+        self.kwargs = kwargs or {}
+
+
 class AppSettings(BaseSettings):
+    BASE_DIR: Path = BASE_DIR
+    SERVER_URL: str = config("SERVER_URL", default="http://localhost:8000")
+    TEMPLATE_PATH: str = str(BASE_DIR / "src")
     APP_NAME: str = config("APP_NAME", default="FastAPI app")
     APP_DESCRIPTION: str | None = config("APP_DESCRIPTION", default=None)
     APP_VERSION: str | None = config("APP_VERSION", default=None)
     LICENSE_NAME: str | None = config("LICENSE", default=None)
     CONTACT_NAME: str | None = config("CONTACT_NAME", default=None)
     CONTACT_EMAIL: str | None = config("CONTACT_EMAIL", default=None)
+    MIDDLEWARES: List[Middleware] = []
+
+
+class MediaSettings(BaseSettings):
+    MEDIA_URL: str | None = config("MEDIA_ROOT", default='/media')
+    MEDIA_ROOT: str | None = config("MEDIA_ROOT", default='medias')
+    MEDIA_STORAGE: str = config("MEDIA_STORAGE", default='fastapi_storages.FileSystemStorage')
 
 
 class CryptSettings(BaseSettings):
@@ -25,28 +45,6 @@ class CryptSettings(BaseSettings):
 
 
 class DatabaseSettings(BaseSettings):
-    pass
-
-
-class SQLiteSettings(DatabaseSettings):
-    SQLITE_URI: str = config("SQLITE_URI", default="./sql_app.db")
-    SQLITE_SYNC_PREFIX: str = config("SQLITE_SYNC_PREFIX", default="sqlite:///")
-    SQLITE_ASYNC_PREFIX: str = config("SQLITE_ASYNC_PREFIX", default="sqlite+aiosqlite:///")
-
-
-class MySQLSettings(DatabaseSettings):
-    MYSQL_USER: str = config("MYSQL_USER", default="username")
-    MYSQL_PASSWORD: str = config("MYSQL_PASSWORD", default="password")
-    MYSQL_SERVER: str = config("MYSQL_SERVER", default="localhost")
-    MYSQL_PORT: int = config("MYSQL_PORT", default=5432)
-    MYSQL_DB: str = config("MYSQL_DB", default="dbname")
-    MYSQL_URI: str = f"{MYSQL_USER}:{MYSQL_PASSWORD}@{MYSQL_SERVER}:{MYSQL_PORT}/{MYSQL_DB}"
-    MYSQL_SYNC_PREFIX: str = config("MYSQL_SYNC_PREFIX", default="mysql://")
-    MYSQL_ASYNC_PREFIX: str = config("MYSQL_ASYNC_PREFIX", default="mysql+aiomysql://")
-    MYSQL_URL: str = config("MYSQL_URL", default=None)
-
-
-class PostgresSettings(DatabaseSettings):
     POSTGRES_USER: str = config("POSTGRES_USER", default="postgres")
     POSTGRES_PASSWORD: str = config("POSTGRES_PASSWORD", default="postgres")
     POSTGRES_SERVER: str = config("POSTGRES_SERVER", default="localhost")
@@ -56,17 +54,6 @@ class PostgresSettings(DatabaseSettings):
     POSTGRES_ASYNC_PREFIX: str = config("POSTGRES_ASYNC_PREFIX", default="postgresql+asyncpg://")
     POSTGRES_URI: str = f"{POSTGRES_USER}:{POSTGRES_PASSWORD}@{POSTGRES_SERVER}:{POSTGRES_PORT}/{POSTGRES_DB}"
     POSTGRES_URL: str | None = config("POSTGRES_URL", default=None)
-
-
-class FirstUserSettings(BaseSettings):
-    ADMIN_NAME: str = config("ADMIN_NAME", default="admin")
-    ADMIN_EMAIL: str = config("ADMIN_EMAIL", default="admin@admin.com")
-    ADMIN_USERNAME: str = config("ADMIN_USERNAME", default="admin")
-    ADMIN_PASSWORD: str = config("ADMIN_PASSWORD", default="!Ch4ng3Th1sP4ssW0rd!")
-
-
-class TestSettings(BaseSettings):
-    ...
 
 
 class RedisCacheSettings(BaseSettings):
@@ -84,41 +71,31 @@ class RedisQueueSettings(BaseSettings):
     REDIS_QUEUE_PORT: int = config("REDIS_QUEUE_PORT", default=6379)
 
 
-class RedisRateLimiterSettings(BaseSettings):
-    REDIS_RATE_LIMIT_HOST: str = config("REDIS_RATE_LIMIT_HOST", default="localhost")
-    REDIS_RATE_LIMIT_PORT: int = config("REDIS_RATE_LIMIT_PORT", default=6379)
-    REDIS_RATE_LIMIT_URL: str = f"redis://{REDIS_RATE_LIMIT_HOST}:{REDIS_RATE_LIMIT_PORT}"
-
-
-class DefaultRateLimitSettings(BaseSettings):
-    DEFAULT_RATE_LIMIT_LIMIT: int = config("DEFAULT_RATE_LIMIT_LIMIT", default=10)
-    DEFAULT_RATE_LIMIT_PERIOD: int = config("DEFAULT_RATE_LIMIT_PERIOD", default=3600)
-
-
 class EnvironmentOption(Enum):
     LOCAL = "local"
+    DEV = "dev"
     STAGING = "staging"
     PRODUCTION = "production"
+
+class MailBackend(Enum):
+    FILE = 'file'
+    SMTP = 'smtp'
 
 
 class EnvironmentSettings(BaseSettings):
     ENVIRONMENT: EnvironmentOption = config("ENVIRONMENT", default="local")
 
 
-class Settings(
-    AppSettings,
-    PostgresSettings,
-    CryptSettings,
-    FirstUserSettings,
-    TestSettings,
-    RedisCacheSettings,
-    ClientSideCacheSettings,
-    RedisQueueSettings,
-    RedisRateLimiterSettings,
-    DefaultRateLimitSettings,
-    EnvironmentSettings
-):
-    pass
-
-
-settings = Settings()
+class EmailSettings(BaseSettings):
+    MAIL_FILES_PATH: str = str(BASE_DIR / 'src' / config("MAIL_FILES_PATH", default="temp-emails/"))
+    MAIL_BACKEND: MailBackend = config("MAIL_BACKEND", default="file")
+    MAIL_USERNAME: str = config("MAIL_USERNAME", default="user")
+    MAIL_PASSWORD: str = config("MAIL_PASSWORD", default="password")
+    MAIL_FROM: str = config("MAIL_FROM", default="from")
+    MAIL_PORT: int = config("MAIL_PORT", default=587)
+    MAIL_SERVER: str = config("MAIL_SERVER", default="smtp.gmail.com")
+    MAIL_FROM_NAME: str = config("MAIL_FROM_NAME", default="FastAPI")
+    MAIL_STARTTLS: bool = config("MAIL_STARTTLS", default=True)
+    MAIL_SSL_TLS: bool = config("MAIL_SSL_TLS", default=False)
+    USE_CREDENTIALS: bool = config("USE_CREDENTIALS", default=True)
+    VALIDATE_CERTS: bool = config("VALIDATE_CERTS", default=True)

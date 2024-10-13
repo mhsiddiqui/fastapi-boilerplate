@@ -1,5 +1,4 @@
 from .user import UserAdminView
-from ..core.db.database import admin
 from .auth_provider import UsernameAndPasswordProvider
 
 

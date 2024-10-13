@@ -1,8 +1,9 @@
 import logging
 import os
 from logging.handlers import RotatingFileHandler
+from .settings import settings
 
-LOG_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "logs")
+LOG_DIR = str(settings.BASE_DIR / 'src' / 'logs')
 if not os.path.exists(LOG_DIR):
     os.makedirs(LOG_DIR)
 
