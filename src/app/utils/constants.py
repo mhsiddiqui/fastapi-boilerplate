@@ -1,13 +1,12 @@
-# from fastapi_babel import _
+from fastapi_babel.core import lazy_gettext as _
 
 
 class Constants(object):
     pass
 
 class Messages(object):
-    USER = 'User'
-    # EMAIL_ALREADY_EXISTS = _("Email is already registered")
-    NOT_AUTHENTICATED = "User not authenticated"
-    EMAIL_ALREADY_EXISTS = "Email is already registered"
-    USERNAME_ALREADY_EXISTS = "Username not available"
-    OBJECT_NOT_FOUND = "{object} not found"
+    USER = _('User')
+    EMAIL_ALREADY_EXISTS = _("Email is already registered")
+    NOT_AUTHENTICATED = _("User not authenticated")
+    USERNAME_ALREADY_EXISTS = _("Username not available")
+    OBJECT_NOT_FOUND = _("{object} not found")

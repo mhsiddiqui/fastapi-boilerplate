@@ -26,6 +26,16 @@ from .settings.base import (
 from .db.database import Base, async_engine as engine
 
 from ..utils.exceptions.handlers import setup_exception_handlers
+from fastapi_babel import Babel, BabelConfigs, BabelMiddleware
+
+configs = BabelConfigs(
+    ROOT_DIR=str(settings.BASE_DIR / "src"),
+    BABEL_DOMAIN=str(settings.BASE_DIR / "src" / 'locale' / 'messages.pot'),
+    BABEL_CONFIG_FILE=str(settings.BASE_DIR / 'src' / 'babel.cfg'),
+    BABEL_DEFAULT_LOCALE='en',
+    BABEL_TRANSLATION_DIRECTORY='locale',
+)
+babel = Babel(configs=configs)
 
 
 # -------------- database --------------
@@ -86,7 +96,6 @@ def lifespan_factory(
         if isinstance(settings, RedisQueueSettings):
             await close_redis_queue_pool()
 
-
     return lifespan
 
 
@@ -130,12 +139,13 @@ class ApplicationFactory:
     for caching, queue, and rate limiting, client-side caching, and customizing the API documentation
     based on the environment settings.
     """
+
     def __init__(
-        self,
-        router: APIRouter,
-        settings: setting_class,
-        create_tables_on_start: bool = True,
-        **kwargs: Any
+            self,
+            router: APIRouter,
+            settings: setting_class,
+            create_tables_on_start: bool = True,
+            **kwargs: Any
     ) -> None:
         self.router = router
         self.settings = settings
@@ -196,6 +206,7 @@ class ApplicationFactory:
                     out: dict = get_openapi(title=application.title, version=application.version,
                                             routes=application.routes)
                     return out
+
                 application.include_router(docs_router)
 
     def set_media_settings(self, application):
@@ -205,6 +216,9 @@ class ApplicationFactory:
                 check_dir=True
             ), name='medias'
         )
+
+    def add_babel_settings(self, application):
+        application.add_middleware(BabelMiddleware, babel_configs=configs)
 
     def init(self):
         self.setup_data()
