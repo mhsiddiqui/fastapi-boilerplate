@@ -58,14 +58,14 @@ repos:
           - mdformat-gfm
           - mdformat_frontmatter
         exclude: CHANGELOG.md
-
-  - repo: local
-    hooks:
-    - id: unit_test
-      name: Unit test
-      language: system
-      entry: poetry run pytest
-      pass_filenames: false
-      always_run: true
-      types: [python]
-      stages: [manual]
+#
+#  - repo: local
+#    hooks:
+#    - id: unit_test
+#      name: Unit test
+#      language: system
+#      entry: poetry run pytest
+#      pass_filenames: false
+#      always_run: true
+#      types: [python]
+#      stages: [manual]
