@@ -9,7 +9,9 @@ from fastapi.encoders import jsonable_encoder
 from redis.asyncio import ConnectionPool, Redis
 
 from src.utils.exceptions.cache_exceptions import (
-    CacheIdentificationInferenceError, InvalidRequestError, MissingClientError
+    CacheIdentificationInferenceError,
+    InvalidRequestError,
+    MissingClientError,
 )
 
 pool: ConnectionPool | None = None

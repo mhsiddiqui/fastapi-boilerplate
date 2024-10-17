@@ -1,17 +1,16 @@
 from enum import Enum
 from pathlib import Path
 from pydoc import locate
-from typing import List
 
 from pydantic_settings import BaseSettings
 from starlette.config import Config
 
 BASE_DIR = Path(__file__).resolve(strict=True).parent.parent.parent
-env_path = str(BASE_DIR / '.env')
+env_path = str(BASE_DIR / ".env")
 config = Config(env_path)
 
 
-class Middleware(object):
+class Middleware:
     def __init__(self, middleware_class, args=None, kwargs=None):
         self.middleware_class = locate(middleware_class)
         self.args = args or []
@@ -28,13 +27,13 @@ class AppSettings(BaseSettings):
     LICENSE_NAME: str | None = config("LICENSE", default=None)
     CONTACT_NAME: str | None = config("CONTACT_NAME", default=None)
     CONTACT_EMAIL: str | None = config("CONTACT_EMAIL", default=None)
-    MIDDLEWARES: List[Middleware] = []
+    MIDDLEWARES: list[Middleware] = []
 
 
 class MediaSettings(BaseSettings):
-    MEDIA_URL: str | None = config("MEDIA_ROOT", default='/media')
-    MEDIA_ROOT: str | None = config("MEDIA_ROOT", default='medias')
-    MEDIA_STORAGE: str = config("MEDIA_STORAGE", default='fastapi_storages.FileSystemStorage')
+    MEDIA_URL: str | None = config("MEDIA_ROOT", default="/media")
+    MEDIA_ROOT: str | None = config("MEDIA_ROOT", default="medias")
+    MEDIA_STORAGE: str = config("MEDIA_STORAGE", default="fastapi_storages.FileSystemStorage")
 
 
 class CryptSettings(BaseSettings):
@@ -77,9 +76,10 @@ class EnvironmentOption(Enum):
     STAGING = "staging"
     PRODUCTION = "production"
 
+
 class MailBackend(Enum):
-    FILE = 'file'
-    SMTP = 'smtp'
+    FILE = "file"
+    SMTP = "smtp"
 
 
 class EnvironmentSettings(BaseSettings):
@@ -87,7 +87,7 @@ class EnvironmentSettings(BaseSettings):
 
 
 class EmailSettings(BaseSettings):
-    MAIL_FILES_PATH: str = str(BASE_DIR / 'src' / config("MAIL_FILES_PATH", default="temp-emails/"))
+    MAIL_FILES_PATH: str = str(BASE_DIR / "src" / config("MAIL_FILES_PATH", default="temp-emails/"))
     MAIL_BACKEND: MailBackend = config("MAIL_BACKEND", default="file")
     MAIL_USERNAME: str = config("MAIL_USERNAME", default="user")
     MAIL_PASSWORD: str = config("MAIL_PASSWORD", default="password")

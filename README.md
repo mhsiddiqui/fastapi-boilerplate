@@ -46,7 +46,7 @@
 - [`Docker Compose`](https://docs.docker.com/compose/) With a single command, create and start all the services from your configuration.
 - [`NGINX`](https://nginx.org/en/) High-performance low resource consumption web server used for Reverse Proxy and Load Balancing.
 
-> \[!TIP\] 
+> \[!TIP\]
 > If you want the `SQLModel` version instead, head to [SQLModel-boilerplate](https://github.com/igorbenav/SQLModel-boilerplate).
 
 ## 1. Features
@@ -102,7 +102,7 @@
    1. [JWT Authentication](#512-jwt-authentication)
    1. [Running](#513-running)
    1. [Create Application](#514-create-application)
-   2. [Opting Out of Services](#515-opting-out-of-services)
+   1. [Opting Out of Services](#515-opting-out-of-services)
 1. [Running in Production](#6-running-in-production)
    1. [Uvicorn Workers with Gunicorn](#61-uvicorn-workers-with-gunicorn)
    1. [Running With NGINX](#62-running-with-nginx)
@@ -484,7 +484,7 @@ To create the first tier it's similar, you just replace `create_superuser` for `
 ### 4.4 Database Migrations
 
 > \[!WARNING\]
-> To create the tables if you did not create the endpoints, ensure that you import the models in src/app/models/__init__.py. This step is crucial to create the new tables.
+> To create the tables if you did not create the endpoints, ensure that you import the models in src/app/models/**init**.py. This step is crucial to create the new tables.
 
 If you are using the db in docker, you need to change this in `docker-compose.yml` to run migrations:
 
@@ -525,7 +525,7 @@ And to apply the migration
 poetry run alembic upgrade head
 ```
 
-> [!NOTE]
+> \[!NOTE\]
 > If you do not have poetry, you may run it without poetry after running `pip install alembic`
 
 ## 5. Extending
@@ -664,7 +664,7 @@ Note that this table is used to blacklist the `JWT` tokens (it's how you log a u
 Inside `app/models`, create a new `entity.py` for each new entity (replacing entity with the name) and define the attributes according to [SQLAlchemy 2.0 standards](https://docs.sqlalchemy.org/en/20/orm/mapping_styles.html#orm-mapping-styles):
 
 > \[!WARNING\]
-> Note that since it inherits from `Base`, the new model is mapped as a python `dataclass`, so optional attributes (arguments with a default value) should be defined after required  attributes.
+> Note that since it inherits from `Base`, the new model is mapped as a python `dataclass`, so optional attributes (arguments with a default value) should be defined after required attributes.
 
 ```python
 from sqlalchemy import String, DateTime
@@ -732,7 +732,7 @@ class EntityDelete(BaseModel):
 ### 5.5 Alembic Migrations
 
 > \[!WARNING\]
-> To create the tables if you did not create the endpoints, ensure that you import the models in src/app/models/__init__.py. This step is crucial to create the new models.
+> To create the tables if you did not create the endpoints, ensure that you import the models in src/app/models/**init**.py. This step is crucial to create the new models.
 
 Then, while in the `src` folder, run Alembic migrations:
 
@@ -1249,7 +1249,7 @@ For `client-side caching`, all you have to do is let the `Settings` class define
 
 Depending on the problem your API is solving, you might want to implement a job queue. A job queue allows you to run tasks in the background, and is usually aimed at functions that require longer run times and don't directly impact user response in your frontend. As a rule of thumb, if a task takes more than 2 seconds to run, can be executed asynchronously, and its result is not needed for the next step of the user's interaction, then it is a good candidate for the job queue.
 
-> [!TIP]
+> \[!TIP\]
 > Very common candidates for background functions are calls to and from LLM endpoints (e.g. OpenAI or Openrouter). This is because they span tens of seconds and often need to be further parsed and saved.
 
 #### Background task creation
@@ -1292,7 +1292,7 @@ async def get_task(task_id: str):
 
 And finally run the worker in parallel to your fastapi application.
 
-> [!IMPORTANT]
+> \[!IMPORTANT\]
 > For any change to the `sample_background_task` to be reflected in the worker, you need to restart the worker (e.g. the docker container).
 
 If you are using `docker compose`, the worker is already running.
@@ -1337,7 +1337,7 @@ async def your_background_function(
     ...
 ```
 
-> [!WARNING]
+> \[!WARNING\]
 > When using database sessions, you will want to use Pydantic objects. However, these objects don't mingle well with the seralization required by ARQ tasks and will be retrieved as a dictionary.
 
 ### 5.11 Rate Limiting
@@ -1520,6 +1520,7 @@ And for the worker:
 ```sh
 poetry run arq src.app.core.worker.settings.WorkerSettings
 ```
+
 ### 5.14 Create Application
 
 If you want to stop tables from being created every time you run the api, you should disable this here:
@@ -1612,7 +1613,7 @@ services:
       - ./src/.env
     # -------- replace with comment if you are using nginx --------
     ports:
-      - "8000:8000"
+      - '8000:8000'
     # expose:
     #   - "8000"
     depends_on:
@@ -1629,7 +1630,7 @@ services:
       - postgres-data:/var/lib/postgresql/data
     # -------- replace with comment to run migrations with docker --------
     expose:
-      - "5432"
+      - '5432'
     # ports:
     #  - 5432:5432
 
@@ -1844,7 +1845,7 @@ Finally create your tests (you may want to copy the structure in test_user.py)
 
 Now, to run:
 
-### 7.1  Docker Compose
+### 7.1 Docker Compose
 
 First you need to uncomment the following part in the `docker-compose.yml` file:
 
@@ -1894,7 +1895,7 @@ It will automatically run the tests, but if you want to run again later:
 docker-compose run --rm pytest
 ```
 
-### 7.2  From Scratch
+### 7.2 From Scratch
 
 While in the `root` folder, run:
 

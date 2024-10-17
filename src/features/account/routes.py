@@ -1,5 +1,6 @@
-from .api import write_user, CurrentUserView
 from core.easy_router.route import Route
+
+from .api import CurrentUserView, write_user
 
 routes = [
     Route(path="/users/", endpoint=write_user, methods=["POST"], status_code=201),

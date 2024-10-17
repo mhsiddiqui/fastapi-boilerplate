@@ -1,4 +1,4 @@
-from typing import List, Any
+from typing import Any
 
 
 class BaseCommand:
@@ -7,7 +7,7 @@ class BaseCommand:
     def __init__(self, app: object):
         self.app = app
 
-    def get_arguments(self) -> List[dict]:
+    def get_arguments(self) -> list[dict]:
         """
         Should be overridden by subclasses to define arguments.
         Each argument should be defined as a dict, e.g.:

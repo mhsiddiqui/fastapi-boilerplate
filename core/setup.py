@@ -3,21 +3,26 @@ import queue
 from collections.abc import AsyncGenerator, Callable
 from contextlib import _AsyncGeneratorContextManager, asynccontextmanager
 from typing import Any
-from starlette.middleware import Middleware
-from starlette.middleware.sessions import SessionMiddleware
-from starlette.staticfiles import StaticFiles
-from starlette_admin.contrib.sqla import Admin
-
-from src.utils.authentication import UsernameAndPasswordProvider
-from src.utils.dependencies import get_current_superuser
-from src.utils.exceptions.handlers import setup_exception_handlers
-from .router import router
-from .settings import settings, setting_class
 
 import fastapi
 from fastapi import APIRouter, Depends, FastAPI
 from fastapi.openapi.docs import get_redoc_html, get_swagger_ui_html
 from fastapi.openapi.utils import get_openapi
+from fastapi_babel import Babel, BabelConfigs, BabelMiddleware
+from starlette.middleware import Middleware
+from starlette.middleware.sessions import SessionMiddleware
+from starlette.staticfiles import StaticFiles
+from starlette_admin.contrib.sqla import Admin
+
+from core.db.database import Base
+from core.db.database import async_engine as engine
+from src.utils.authentication import UsernameAndPasswordProvider
+from src.utils.dependencies import get_current_superuser
+from src.utils.exceptions.handlers import setup_exception_handlers
+
+from .cache import cache
+from .router import router
+from .settings import setting_class, settings
 from .settings.base import (
     AppSettings,
     DatabaseSettings,
@@ -26,25 +31,17 @@ from .settings.base import (
     RedisCacheSettings,
     RedisQueueSettings,
 )
-from core.db.database import Base, async_engine as engine
-
-from fastapi_babel import Babel, BabelConfigs, BabelMiddleware
-
-from .cache import cache
 
 configs = BabelConfigs(
     ROOT_DIR=str(settings.BASE_DIR),
-    BABEL_DOMAIN=str(settings.BASE_DIR / 'locale' / 'messages.pot'),
-    BABEL_CONFIG_FILE=str(settings.BASE_DIR / 'babel.cfg'),
-    BABEL_DEFAULT_LOCALE='en',
-    BABEL_TRANSLATION_DIRECTORY='locale',
+    BABEL_DOMAIN=str(settings.BASE_DIR / "locale" / "messages.pot"),
+    BABEL_CONFIG_FILE=str(settings.BASE_DIR / "babel.cfg"),
+    BABEL_DEFAULT_LOCALE="en",
+    BABEL_TRANSLATION_DIRECTORY="locale",
 )
 babel = Babel(configs=configs)
 
-INSTALLED_APPS = [
-    'features.auth',
-    'features.account'
-]
+INSTALLED_APPS = ["features.auth", "features.account"]
 
 
 # -------------- database --------------
@@ -57,6 +54,7 @@ async def create_tables() -> None:
 async def create_redis_cache_pool() -> None:
     if isinstance(settings, RedisCacheSettings):
         import redis.asyncio as redis
+
         cache.pool = redis.ConnectionPool.from_url(settings.REDIS_CACHE_URL)
         cache.client = redis.Redis.from_pool(cache.pool)  # type: ignore
 
@@ -69,7 +67,8 @@ async def close_redis_cache_pool() -> None:
 # # -------------- queue --------------
 async def create_redis_queue_pool() -> None:
     if isinstance(settings, RedisQueueSettings):
-        from arq import create_pool, connections
+        from arq import connections, create_pool
+
         queue.pool = await create_pool(
             connections.RedisSettings(host=settings.REDIS_QUEUE_HOST, port=settings.REDIS_QUEUE_PORT)
         )
@@ -81,8 +80,8 @@ async def close_redis_queue_pool() -> None:
 
 
 def lifespan_factory(
-        settings: setting_class,
-        create_tables_on_start: bool = True,
+    settings: setting_class,
+    create_tables_on_start: bool = True,
 ) -> Callable[[FastAPI], _AsyncGeneratorContextManager[Any]]:
     """Factory to create a lifespan async context manager for a FastAPI app."""
 
@@ -150,11 +149,11 @@ class ApplicationFactory:
     """
 
     def __init__(
-            self,
-            # router: APIRouter,
-            settings: setting_class,
-            create_tables_on_start: bool = True,
-            **kwargs: Any
+        self,
+        # router: APIRouter,
+        settings: setting_class,
+        create_tables_on_start: bool = True,
+        **kwargs: Any,
     ) -> None:
         # self.router = router
         self.settings = settings
@@ -184,7 +183,8 @@ class ApplicationFactory:
 
     def initialize_admin(self, application):
         admin = Admin(
-            engine, title=self.settings.APP_NAME,
+            engine,
+            title=self.settings.APP_NAME,
             auth_provider=UsernameAndPasswordProvider(),
             middlewares=[Middleware(SessionMiddleware, secret_key=self.settings.SECRET_KEY)],
         )
@@ -213,28 +213,28 @@ class ApplicationFactory:
 
                 @docs_router.get("/openapi.json", include_in_schema=False)
                 async def openapi() -> dict[str, Any]:
-                    out: dict = get_openapi(title=application.title, version=application.version,
-                                            routes=application.routes)
+                    out: dict = get_openapi(
+                        title=application.title, version=application.version, routes=application.routes
+                    )
                     return out
 
                 application.include_router(docs_router)
 
     def set_media_settings(self, application):
         application.mount(
-            settings.MEDIA_URL, StaticFiles(
-                directory=str(settings.BASE_DIR / settings.MEDIA_ROOT),
-                check_dir=True
-            ), name='medias'
+            settings.MEDIA_URL,
+            StaticFiles(directory=str(settings.BASE_DIR / settings.MEDIA_ROOT), check_dir=True),
+            name="medias",
         )
 
     def initialize_apps(self, application, admin):
         for app_name in INSTALLED_APPS:
-            app_module = importlib.import_module(f'src.{app_name}.app')
-            app_object = getattr(app_module, 'app', None)
+            app_module = importlib.import_module(f"src.{app_name}.app")
+            app_object = getattr(app_module, "app", None)
             if app_object:
-                routes_module = importlib.import_module(f'src.{app_name}.routes')
+                routes_module = importlib.import_module(f"src.{app_name}.routes")
                 if routes_module:
-                    app_router = app_object.initialize_router(getattr(routes_module, 'routes', []))
+                    app_router = app_object.initialize_router(getattr(routes_module, "routes", []))
                     router.include_router(app_router)
                 app_object.initialize_admin(admin)
         application.include_router(router)

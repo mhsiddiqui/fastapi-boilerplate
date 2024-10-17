@@ -1,9 +1,10 @@
 import abc
 
-from fastapi_mail import ConnectionConfig, MessageType, MessageSchema, FastMail
+from fastapi_mail import ConnectionConfig, FastMail, MessageSchema, MessageType
 from starlette.responses import JSONResponse
 
 from core.settings import settings
+
 from ..utils.render import render
 
 
@@ -36,7 +37,7 @@ class BaseBackend(abc.ABC):
             subject=self.subject,
             recipients=self.recipients,
             body=render(self.template, **self.context),
-            subtype=MessageType.html
+            subtype=MessageType.html,
         )
 
     @abc.abstractmethod
@@ -59,7 +60,7 @@ class SmtpBackend(BaseBackend):
 
 def send_mail(subject, recipients, template, context):
     mail_backend = settings.MAIL_BACKEND
-    if mail_backend == 'file':
+    if mail_backend == "file":
         backend = FileBackend(subject, recipients, template, context)
     else:
         backend = SmtpBackend(subject, recipients, template, context)

@@ -1,32 +1,33 @@
 from datetime import timedelta
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Response
-from fastapi import Request
+from fastapi import APIRouter, Depends, Request, Response
 from fastapi.security import OAuth2PasswordRequestForm
 from fastcrud.exceptions.http_exceptions import UnauthorizedException
 from jose import JWTError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.db.database import async_get_db
+from core.settings import settings
 from src.utils.authentication import (
     authenticate_user,
+    blacklist_token,
     create_access_token,
     create_refresh_token,
+    oauth2_scheme,
     verify_token,
 )
-from src.utils.authentication import blacklist_token, oauth2_scheme
-from core.settings import settings
+
 from .schemas import Token
 
-router = APIRouter(tags=["Authentication"], prefix='/auth')
+router = APIRouter(tags=["Authentication"], prefix="/auth")
 
 
 # @router.post("/login/", response_model=Token)
 async def login_for_access_token(
-        response: Response,
-        form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
-        db: Annotated[AsyncSession, Depends(async_get_db)],
+    response: Response,
+    form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
+    db: Annotated[AsyncSession, Depends(async_get_db)],
 ) -> Token:
     user = await authenticate_user(username_or_email=form_data.username, password=form_data.password, db=db)
     if not user:
@@ -61,7 +62,7 @@ async def refresh_access_token(request: Request, db: AsyncSession = Depends(asyn
 
 @router.post("/logout")
 async def logout(
-        response: Response, access_token: str = Depends(oauth2_scheme), db: AsyncSession = Depends(async_get_db)
+    response: Response, access_token: str = Depends(oauth2_scheme), db: AsyncSession = Depends(async_get_db)
 ) -> dict[str, str]:
     try:
         await blacklist_token(token=access_token, db=db)

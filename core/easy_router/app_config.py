@@ -6,12 +6,7 @@ from fastapi import APIRouter
 
 class AppConfig(ABC):
     def __init__(
-        self,
-        app_name: str,
-        base_url: str = None,
-        tags: list[str] = None,
-        admins: list[Any] = None,
-        router_kwargs=None
+        self, app_name: str, base_url: str = None, tags: list[str] = None, admins: list[Any] = None, router_kwargs=None
     ):
         self.app_name = app_name
         self.base_url = base_url
@@ -27,7 +22,6 @@ class AppConfig(ABC):
             admin.add_view(admin_view)
 
     def initialize_router(self, routes):
-
         app_router = self.get_app_router()
 
         for route_obj in routes:

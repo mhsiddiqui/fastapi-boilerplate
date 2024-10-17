@@ -1,5 +1,6 @@
-from .api import login_for_access_token, refresh_access_token, logout
 from core.easy_router.route import Route
+
+from .api import login_for_access_token, logout, refresh_access_token
 
 routes = [
     Route(path="/login/", endpoint=login_for_access_token, methods=["POST"]),

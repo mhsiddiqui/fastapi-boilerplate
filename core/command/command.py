@@ -12,13 +12,13 @@ class ManagementCommandSystem:
         self.app = app
         self.commands = []
 
-    def register(self, package='scripts'):
+    def register(self, package="scripts"):
         package_module = importlib.import_module(package)
         package_path = os.path.dirname(package_module.__file__)
         for _, module_name, _ in pkgutil.iter_modules([package_path]):
-            module = importlib.import_module(f'{package}.{module_name}')
-            if hasattr(module, 'Command'):
-                self.register_command(name=module_name, command_class=getattr(module, 'Command'))
+            module = importlib.import_module(f"{package}.{module_name}")
+            if hasattr(module, "Command"):
+                self.register_command(name=module_name, command_class=getattr(module, "Command"))
 
     def register_command(self, name, command_class):
         """
@@ -41,9 +41,9 @@ class ManagementCommandSystem:
 
         def decorator(f):
             for arg in reversed(arguments):
-                name = arg['name']
-                arg_type = arg.get('type', str)
-                required = arg.get('required', False)
+                name = arg["name"]
+                arg_type = arg.get("type", str)
+                required = arg.get("required", False)
                 f = click.argument(name, type=arg_type, required=required)(f)
             return f
 

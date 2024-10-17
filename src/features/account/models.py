@@ -6,15 +6,13 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from core.db.database import Base
 from core.storage import get_storage_class
-from src.utils.models import TimestampMixin, SoftDeleteMixin
+from src.utils.models import SoftDeleteMixin, TimestampMixin
 
 
 class User(Base, TimestampMixin, SoftDeleteMixin):
     __tablename__ = "user"
 
-    id: Mapped[int] = mapped_column(
-        "id", autoincrement=True, nullable=False, unique=True, primary_key=True, init=False
-    )
+    id: Mapped[int] = mapped_column("id", autoincrement=True, nullable=False, unique=True, primary_key=True, init=False)
 
     name: Mapped[str] = mapped_column(String(30))
     username: Mapped[str] = mapped_column(String(20), unique=True, index=True)

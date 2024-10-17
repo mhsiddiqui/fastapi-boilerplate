@@ -4,18 +4,18 @@ from typing import Any, Literal
 
 import bcrypt
 from fastapi.requests import Request
-from fastapi.responses import Response, RedirectResponse
+from fastapi.responses import RedirectResponse, Response
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette_admin.auth import AdminConfig, AdminUser, AuthProvider
 from starlette_admin.exceptions import FormValidationError, LoginFailed
 
-from src.features.account.crud import crud_users
-from src.features.auth.crud import crud_token_blacklist
-from src.features.auth.schemas import TokenData, TokenBlacklistCreate
 from core.db.database import local_session
 from core.settings import settings
+from src.features.account.crud import crud_users
+from src.features.auth.crud import crud_token_blacklist
+from src.features.auth.schemas import TokenBlacklistCreate, TokenData
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
 
@@ -119,15 +119,13 @@ class UsernameAndPasswordProvider(AuthProvider):
     ) -> Response:
         if len(username) < 3:
             """Form data validation"""
-            raise FormValidationError(
-                {"username": "Ensure username has at least 03 characters"}
-            )
+            raise FormValidationError({"username": "Ensure username has at least 03 characters"})
 
         if username and password:
             """Save `username` in session"""
             user = await authenticate_user(username, password, db=local_session())
             if user:
-                request.session.update({'user': json.dumps(user, default=str)})
+                request.session.update({"user": json.dumps(user, default=str)})
             else:
                 raise LoginFailed("Invalid username or password")
             return response
@@ -135,8 +133,8 @@ class UsernameAndPasswordProvider(AuthProvider):
         raise LoginFailed("Invalid username or password")
 
     async def is_authenticated(self, request) -> bool:
-        if request.session.get('user'):
-            request.state.user = request.session['user']
+        if request.session.get("user"):
+            request.state.user = request.session["user"]
             return True
         return False
 
@@ -155,11 +153,11 @@ class UsernameAndPasswordProvider(AuthProvider):
 
     def get_admin_user(self, request: Request) -> AdminUser:
         user = json.loads(request.state.user)  # Retrieve current user
-        photo_url = None
-        if user.get("avatar") is not None:
-            photo_url = request.url_for("static", path=user["avatar"])
+        # photo_url = None
+        # if user.get("avatar") is not None:
+        #     photo_url = request.url_for("static", path=user["avatar"])
         return AdminUser(username=user["name"])
 
     async def logout(self, request: Request, response: Response) -> Response:
         request.session.clear()
-        return RedirectResponse('/admin/login')
+        return RedirectResponse("/admin/login")

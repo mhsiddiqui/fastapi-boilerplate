@@ -7,9 +7,7 @@ from starlette.responses import JSONResponse
 from src.utils.exceptions.http_exceptions import CustomValidationException
 
 
-async def validation_exception_handler(
-        request: Request, exc: RequestValidationError
-) -> JSONResponse:
+async def validation_exception_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
     """
     Handles ValidationError, translating it into flat dict error data:
         * code - unique code of the error in the system
@@ -24,18 +22,12 @@ async def validation_exception_handler(
     errors = exc.errors()
     try:
         for error in errors:
-            if error.get('loc') and isinstance(error.get('loc'), tuple):
-                error['field'] = error.get('loc')[1]
-                error.pop('loc', None)
-        return JSONResponse(
-            status_code=status_code,
-            content={"detail": jsonable_encoder(errors)}
-        )
+            if error.get("loc") and isinstance(error.get("loc"), tuple):
+                error["field"] = error.get("loc")[1]
+                error.pop("loc", None)
+        return JSONResponse(status_code=status_code, content={"detail": jsonable_encoder(errors)})
     except Exception:
-        return JSONResponse(
-            status_code=status_code,
-            content={"detail": jsonable_encoder(errors)}
-        )
+        return JSONResponse(status_code=status_code, content={"detail": jsonable_encoder(errors)})
 
 
 def setup_exception_handlers(app: FastAPI) -> None:
@@ -47,16 +39,13 @@ def setup_exception_handlers(app: FastAPI) -> None:
 
         app = FastAPI()
 
-        @app.on_event('startup')
+
+        @app.on_event("startup")
         async def startup():
             setup_exception_handlers(app)
 
     :param app: app object, instance of FastAPI
     :return: None
     """
-    app.add_exception_handler(
-        CustomValidationException, validation_exception_handler
-    )
-    app.add_exception_handler(
-        RequestValidationError, validation_exception_handler
-    )
+    app.add_exception_handler(CustomValidationException, validation_exception_handler)
+    app.add_exception_handler(RequestValidationError, validation_exception_handler)
