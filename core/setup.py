@@ -1,4 +1,3 @@
-import importlib
 import queue
 from collections.abc import AsyncGenerator, Callable
 from contextlib import _AsyncGeneratorContextManager, asynccontextmanager
@@ -21,6 +20,7 @@ from src.utils.dependencies import get_current_superuser
 from src.utils.exceptions.handlers import setup_exception_handlers
 
 from .cache import cache
+from .easy_router.initializer import InstalledAppsInitializer
 from .router import router
 from .settings import setting_class, settings
 from .settings.base import (
@@ -188,7 +188,6 @@ class ApplicationFactory:
             auth_provider=UsernameAndPasswordProvider(),
             middlewares=[Middleware(SessionMiddleware, secret_key=self.settings.SECRET_KEY)],
         )
-        # initialize_admin(admin)
         admin.mount_to(application)
         return admin
 
@@ -228,15 +227,9 @@ class ApplicationFactory:
         )
 
     def initialize_apps(self, application, admin):
-        for app_name in INSTALLED_APPS:
-            app_module = importlib.import_module(f"src.{app_name}.app")
-            app_object = getattr(app_module, "app", None)
-            if app_object:
-                routes_module = importlib.import_module(f"src.{app_name}.routes")
-                if routes_module:
-                    app_router = app_object.initialize_router(getattr(routes_module, "routes", []))
-                    router.include_router(app_router)
-                app_object.initialize_admin(admin)
+        InstalledAppsInitializer(
+            app=application, router=router, package_name="src", installed_apps=INSTALLED_APPS, admin=admin
+        ).initialize()
         application.include_router(router)
 
     def add_babel_settings(self, application):
@@ -248,7 +241,6 @@ class ApplicationFactory:
         setup_exception_handlers(application)
         admin = self.initialize_admin(application)
         self.initialize_apps(application, admin=admin)
-        # self.include_router(application)
         self.add_middlewares(application)
         self.set_media_settings(application)
         self.setup_docs(application)

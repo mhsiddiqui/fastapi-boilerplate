@@ -3,30 +3,31 @@ from typing import Any
 
 from fastapi import APIRouter
 
+from core.easy_router.route import Route
+
 
 class AppConfig(ABC):
-    def __init__(
-        self, app_name: str, base_url: str = None, tags: list[str] = None, admins: list[Any] = None, router_kwargs=None
-    ):
-        self.app_name = app_name
-        self.base_url = base_url
-        self.tags = tags or []
-        self.admins = admins or []
-        self.router_kwargs = router_kwargs or {}
+    name: str
+    base_url: str = None
+    router_kwargs: dict = {}
+    tags: list[str] = []
+
+    def init(self, routes: list[Route] = None, **kwargs: Any):
+        router = self.initialize_router(routes or [])
+        self.ready(**kwargs)
+        return router
 
     def get_app_router(self):
-        return APIRouter(tags=self.tags, prefix=self.base_url, **self.router_kwargs)
-
-    def initialize_admin(self, admin):
-        for admin_view in self.admins:
-            admin.add_view(admin_view)
+        if self.base_url:
+            return APIRouter(tags=self.tags, prefix=self.base_url, **self.router_kwargs)
 
     def initialize_router(self, routes):
         app_router = self.get_app_router()
-
         for route_obj in routes:
             route_list = route_obj.get()
             for route in route_list:
                 app_router.add_api_route(**route)
-
         return app_router
+
+    def ready(self, **kwargs):
+        pass

@@ -44,6 +44,7 @@ fastcrud = "^0.15.1"
 uvicorn = "^0.31.1"
 python-multipart = "^0.0.12"
 click = "^8.1.7"
+cmd-manager = "^0.1.0"
 
 
 [tool.poetry.group.dev.dependencies]

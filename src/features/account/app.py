@@ -1,9 +1,18 @@
 from core.easy_router.app_config import AppConfig
 from src.features.account.admin import UserAdminView
 
-TAGS = ["Account"]
-APP_NAME = "account"
-BASE_URL = "/account"
-ADMINS = [UserAdminView]
 
-app = AppConfig(app_name=APP_NAME, tags=TAGS, base_url=BASE_URL, admins=ADMINS)
+class AccountAppConfig(AppConfig):
+    name = "account"
+    base_url = "/account"
+    tags = ["Account"]
+    ADMINS = [UserAdminView]
+
+    def ready(self, **kwargs):
+        admin = kwargs.get("admin")
+        if admin:
+            for admin_view in self.ADMINS:
+                admin.add_view(admin_view)
+
+
+app = AccountAppConfig()

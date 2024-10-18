@@ -1,4 +1,4 @@
-from core.command.base import BaseCommand
+from cmd_manager import BaseCommand
 
 
 class Command(BaseCommand):

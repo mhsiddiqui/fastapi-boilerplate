@@ -1,18 +1,16 @@
-import subprocess
-
 import click
 import uvicorn
 from alembic import command as alembic_command
 from alembic.config import Config
+from cmd_manager import ManagementCommandSystem
 
 from core.application import app
-from core.command.command import ManagementCommandSystem
 from core.settings import settings
 
 management_system = ManagementCommandSystem(app=app)
 management_system.register(package="src.scripts")
 
-cli = management_system.create_cli()
+cli_system = management_system.create_cli()
 
 
 def get_alembic_config():
@@ -21,7 +19,7 @@ def get_alembic_config():
     return alembic_cfg
 
 
-@cli.command()
+@cli_system.command()
 @click.option("--host", default="127.0.0.1", help="The host to bind to.")
 @click.option("--port", default=8000, help="The port to bind to.")
 @click.option("--reload", is_flag=True, default=True, help="Enable auto-reload on code changes.")
@@ -31,7 +29,7 @@ def runserver(host, port, reload, workers):
     uvicorn.run(app, host=host, port=port, reload=reload, workers=workers)
 
 
-@cli.command()
+@cli_system.command()
 @click.option("--message", "-m", default="auto migration", help="Migration message.")
 def makemigrations(message):
     """Generate new Alembic migrations."""
@@ -40,7 +38,7 @@ def makemigrations(message):
     click.echo(f"Generated new migration with message: {message}")
 
 
-@cli.command()
+@cli_system.command()
 def migrate():
     """Apply migrations to the database."""
     alembic_cfg = get_alembic_config()
@@ -48,26 +46,5 @@ def migrate():
     click.echo("Migrations applied.")
 
 
-@click.command(context_settings=dict(ignore_unknown_options=True, allow_extra_args=True))  # noqa C408
-@click.argument("args", nargs=-1)  # Capture all arguments after the command
-def babel(args, **kwargs):
-    """This command calls a third-party CLI tool and passes all arguments to it."""
-    # Example: Replace `third-party-cli` with the actual CLI command (e.g., 'git')
-
-    print(args)
-    print(kwargs)
-    command = ["pybabel"] + list(args)
-
-    # Call the third-party CLI using subprocess
-    result = subprocess.run(command, capture_output=True, text=True)
-
-    # Output the result (stdout and stderr)
-    click.echo(result.stdout)
-    click.echo(result.stderr, err=True)
-
-
-cli.add_command(babel)
-
-
 if __name__ == "__main__":
-    cli()
+    cli_system()
