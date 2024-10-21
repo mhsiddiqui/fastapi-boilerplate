@@ -36,7 +36,7 @@ http:
         - web-secure
       middlewares:
         - csrf
-      service: django
+      service: web
       tls:
         # https://docs.traefik.io/master/routing/routers/#certresolver
         certResolver: letsencrypt
@@ -58,10 +58,10 @@ http:
         hostsProxyHeaders: ['X-CSRFToken']
 
   services:
-    django:
+    web:
       loadBalancer:
         servers:
-          - url: http://django:5000
+          - url: http://web:8000
 
 #    flower:
 #      loadBalancer:
