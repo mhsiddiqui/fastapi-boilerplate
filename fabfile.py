@@ -54,7 +54,7 @@ def deploy(connection, branch="main"):
 
 TASKS = [build, up, stop, logs, clean, deploy, manage]
 local = Collection("local")
-dev = Collection("local")
+dev = Collection("dev")
 prod = Collection("prod")
 
 for t in TASKS:
