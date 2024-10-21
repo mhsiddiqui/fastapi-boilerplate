@@ -61,7 +61,7 @@ http:
     web:
       loadBalancer:
         servers:
-          - url: http://web:8000
+          - url: http://web:5000
 
 #    flower:
 #      loadBalancer:

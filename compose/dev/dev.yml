@@ -13,7 +13,7 @@ services:
       - ../../.env
     # -------- replace with comment if you are using nginx --------
     ports:
-      - "8000:8000"
+      - "5000:5000"
 #    depends_on:
 #      - postgres
 #    expose:
@@ -58,7 +58,6 @@ services:
       - production_traefik:/etc/traefik/acme
     ports:
       - '0.0.0.0:80:80'
-      - '0.0.0.0:8000:8000'
       - '0.0.0.0:443:443'
       - '0.0.0.0:5555:5555'
 
