@@ -49,8 +49,8 @@ services:
 
   traefik:
     build:
-      context: .
-      dockerfile: ./compose/dev/traefik/Dockerfile
+      context: ../../
+      dockerfile: compose/dev/traefik/Dockerfile
     image: babygin_production_traefik
     depends_on:
       - web
