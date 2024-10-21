@@ -37,7 +37,7 @@ def logs(connection, service=""):
 
 @task
 def manage(connection, command, args=""):
-    connection.run(f"docker compose -f {connection['file']} run --rm django python manage.py {command} {args}")
+    connection.run(f"docker compose -f {connection['file']} run --rm web python manage.py {command} {args}")
 
 
 @task
@@ -54,12 +54,14 @@ def deploy(connection, branch="main"):
 
 TASKS = [build, up, stop, logs, clean, deploy, manage]
 local = Collection("local")
+dev = Collection("local")
 prod = Collection("prod")
 
 for t in TASKS:
     local.add_task(t)
     prod.add_task(t)
 
-local.configure({"file": "local.yml"})
-prod.configure({"file": "production.yml"})
-ns = Collection(local, prod)
+local.configure({"file": "compose/local/local.yml"})
+dev.configure({"file": "compose/dev/dev.yml"})
+# prod.configure({"file": "production.yml"})
+ns = Collection(local, prod, dev)
