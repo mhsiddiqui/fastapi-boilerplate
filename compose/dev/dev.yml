@@ -14,8 +14,8 @@ services:
     # -------- replace with comment if you are using nginx --------
     ports:
       - "8000:8000"
-    depends_on:
-      - postgres
+#    depends_on:
+#      - postgres
     expose:
        - "8000"
     volumes:
@@ -35,17 +35,32 @@ services:
 #      - ./src/app:/code/app
 #      - ./src/.env:/code/.env
 
-  postgres:
-    image: postgres:16
-    env_file:
-      - ../../.env
+#  postgres:
+#    image: postgres:16
+#    env_file:
+#      - ../../.env
+#    volumes:
+#      - postgres_data:/var/lib/postgresql/data
+#    # -------- replace with comment to run migrations with docker --------
+#    expose:
+#      - "5432"
+#    ports:
+#      - 5432:5432
+
+  traefik:
+    build:
+      context: .
+      dockerfile: ./compose/dev/traefik/Dockerfile
+    image: babygin_production_traefik
+    depends_on:
+      - web
     volumes:
-      - postgres_data:/var/lib/postgresql/data
-    # -------- replace with comment to run migrations with docker --------
-    expose:
-      - "5432"
+      - production_traefik:/etc/traefik/acme
     ports:
-      - 5432:5432
+      - '0.0.0.0:80:80'
+      - '0.0.0.0:8000:8000'
+      - '0.0.0.0:443:443'
+      - '0.0.0.0:5555:5555'
 
 #  redis:
 #    image: redis:alpine
@@ -122,5 +137,5 @@ services:
 
 volumes:
   media_data:
-  postgres_data:
-  postgres_data_backups:
+#  postgres_data:
+#  postgres_data_backups:
