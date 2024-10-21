@@ -59,6 +59,7 @@ prod = Collection("prod")
 
 for t in TASKS:
     local.add_task(t)
+    dev.add_task(t)
     prod.add_task(t)
 
 local.configure({"file": "compose/local/local.yml"})
