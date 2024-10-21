@@ -28,6 +28,7 @@ class AppSettings(BaseSettings):
     CONTACT_NAME: str | None = config("CONTACT_NAME", default=None)
     CONTACT_EMAIL: str | None = config("CONTACT_EMAIL", default=None)
     MIDDLEWARES: list[Middleware] = []
+    TEMPLATES_DIR: str = str(BASE_DIR / "src" / "templates")
 
 
 class MediaSettings(BaseSettings):
@@ -99,3 +100,10 @@ class EmailSettings(BaseSettings):
     MAIL_SSL_TLS: bool = config("MAIL_SSL_TLS", default=False)
     USE_CREDENTIALS: bool = config("USE_CREDENTIALS", default=True)
     VALIDATE_CERTS: bool = config("VALIDATE_CERTS", default=True)
+
+
+class OTPSettings(BaseSettings):
+    OTP_SECRET: str = config("OTP_SECRET", default="base32secret3232")
+    OTP_TIMEOUT: int = config("OTP_TIMEOUT", default=5 * 60)
+    OTP_DEBUG: bool = config("OTP_DEBUG", default=False)
+    TESTING_OTP: int = config("TESTING_OTP", default=123456)

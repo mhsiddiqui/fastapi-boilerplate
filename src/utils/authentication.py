@@ -1,23 +1,29 @@
 import json
 from datetime import UTC, datetime, timedelta
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 
 import bcrypt
-from fastapi.requests import Request
+from fastapi import Depends, HTTPException
 from fastapi.responses import RedirectResponse, Response
 from fastapi.security import OAuth2PasswordBearer
+from fastcrud.exceptions.http_exceptions import ForbiddenException, UnauthorizedException
 from jose import JWTError, jwt
 from sqlalchemy.ext.asyncio import AsyncSession
+from starlette.requests import Request
 from starlette_admin.auth import AdminConfig, AdminUser, AuthProvider
 from starlette_admin.exceptions import FormValidationError, LoginFailed
 
-from core.db.database import local_session
+from core.db.database import async_get_db, local_session
+from core.logger import logging
 from core.settings import settings
 from src.features.account.crud import crud_users
 from src.features.auth.crud import crud_token_blacklist
 from src.features.auth.schemas import TokenBlacklistCreate, TokenData
+from src.utils.constants import Messages
+from src.utils.util_methods import UtilMethods
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
+logger = logging.getLogger(__name__)
 
 
 async def verify_password(plain_password: str, password: str) -> bool:
@@ -141,7 +147,7 @@ class UsernameAndPasswordProvider(AuthProvider):
     def get_admin_config(self, request: Request) -> AdminConfig:
         user = json.loads(request.state.user)  # Retrieve current user
         # Update app title according to current_user
-        custom_app_title = "Hello, " + user["name"] + "!"
+        custom_app_title = f"Hello, {user['name']}!"
         # Update logo url according to current_user
         custom_logo_url = None
         if user.get("company_logo_url", None):
@@ -153,11 +159,66 @@ class UsernameAndPasswordProvider(AuthProvider):
 
     def get_admin_user(self, request: Request) -> AdminUser:
         user = json.loads(request.state.user)  # Retrieve current user
-        # photo_url = None
-        # if user.get("avatar") is not None:
-        #     photo_url = request.url_for("static", path=user["avatar"])
-        return AdminUser(username=user["name"])
+        photo_url = None
+        if user.get("profile_photo") is not None:
+            photo_url = UtilMethods.get_absolute_url(user["profile_photo"])
+        return AdminUser(username=user["name"], photo_url=photo_url)
 
     async def logout(self, request: Request, response: Response) -> Response:
         request.session.clear()
         return RedirectResponse("/admin/login")
+
+
+async def get_current_user(
+    token: Annotated[str, Depends(oauth2_scheme)], db: Annotated[AsyncSession, Depends(async_get_db)]
+) -> dict[str, Any] | None:
+    token_data = await verify_token(token, db)
+    if token_data is None:
+        raise UnauthorizedException(Messages.NOT_AUTHENTICATED)
+
+    filters = {"db": db, "is_deleted": False, "is_active": True}
+
+    if "@" in token_data.username_or_email:
+        filters["email"] = token_data.username_or_email
+    else:
+        filters["username"] = token_data.username_or_email
+
+    user = await crud_users.get(**filters)
+
+    if user:
+        return user
+
+    raise UnauthorizedException(Messages.NOT_AUTHENTICATED)
+
+
+async def get_current_superuser(current_user: Annotated[dict, Depends(get_current_user)]) -> dict:
+    if not current_user["is_superuser"]:
+        raise ForbiddenException("You do not have enough privileges.")
+
+    return current_user
+
+
+async def get_optional_user(request: Request, db: AsyncSession = Depends(async_get_db)) -> dict | None:
+    token = request.headers.get("Authorization")
+    if not token:
+        return None
+
+    try:
+        token_type, _, token_value = token.partition(" ")
+        if token_type.lower() != "bearer" or not token_value:
+            return None
+
+        token_data = await verify_token(token_value, db)
+        if token_data is None:
+            return None
+
+        return await get_current_user(token_value, db=db)
+
+    except HTTPException as http_exc:
+        if http_exc.status_code != 401:
+            logger.error(f"Unexpected HTTPException in get_optional_user: {http_exc.detail}")
+        return None
+
+    except Exception as exc:
+        logger.error(f"Unexpected error in get_optional_user: {exc}")
+        return None

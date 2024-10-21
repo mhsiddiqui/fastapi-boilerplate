@@ -5,7 +5,7 @@ from starlette.responses import JSONResponse
 
 from core.settings import settings
 
-from ..utils.render import render
+from .render import render
 
 
 class BaseBackend(abc.ABC):
@@ -65,3 +65,29 @@ def send_mail(subject, recipients, template, context):
     else:
         backend = SmtpBackend(subject, recipients, template, context)
     return backend.send()
+
+
+class EmailUtil:
+    def __init__(
+        self, from_email=None, to_emails=None, subject="", text_body=None, html_template=None, template_data=None
+    ):
+        self.from_email = from_email or settings.MAIL_FROM
+        self.to_emails = to_emails or []
+        self.subject = subject
+        self.text_body = text_body
+        self.html_template = html_template
+        self.template_data = template_data or {}
+
+    def send(self):
+        data = {
+            "subject": self.subject,
+            "message": self.text_body,
+            "from_email": self.from_email,
+            "recipient_list": self.to_emails,
+        }
+        if self.html_template:
+            data["html_message"] = self._html_body()
+        send_mail(**data)
+
+    def _html_body(self):
+        return render(template_name=self.html_template, context=self.template_data)

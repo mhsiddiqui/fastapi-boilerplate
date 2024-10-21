@@ -8,20 +8,16 @@ from fastapi import APIRouter, Depends, FastAPI
 from fastapi.openapi.docs import get_redoc_html, get_swagger_ui_html
 from fastapi.openapi.utils import get_openapi
 from fastapi_babel import Babel, BabelConfigs, BabelMiddleware
-from starlette.middleware import Middleware
-from starlette.middleware.sessions import SessionMiddleware
 from starlette.staticfiles import StaticFiles
-from starlette_admin.contrib.sqla import Admin
 
 from core.db.database import Base
 from core.db.database import async_engine as engine
-from src.utils.authentication import UsernameAndPasswordProvider
-from src.utils.dependencies import get_current_superuser
+from src.utils.authentication import get_current_superuser
 from src.utils.exceptions.handlers import setup_exception_handlers
 
+from .admin import admin
 from .cache import cache
-from .easy_router.initializer import InstalledAppsInitializer
-from .router import router
+from .easy_router.initializer import RoutesInitializer
 from .settings import setting_class, settings
 from .settings.base import (
     AppSettings,
@@ -41,7 +37,7 @@ configs = BabelConfigs(
 )
 babel = Babel(configs=configs)
 
-INSTALLED_APPS = ["features.auth", "features.account"]
+INSTALLED_APPS = ["features.auth", "features.account", "features.otp"]
 
 
 # -------------- database --------------
@@ -173,23 +169,13 @@ class ApplicationFactory:
         if isinstance(self.settings, EnvironmentSettings):
             self.data.update({"docs_url": None, "redoc_url": None, "openapi_url": None})
 
-    # def include_router(self, application):
-    #     application.include_router(self.router)
-
     def initialize_application(self):
         lifespan = lifespan_factory(self.settings, create_tables_on_start=self.create_tables_on_start)
         application = FastAPI(lifespan=lifespan, **self.data)
         return application
 
     def initialize_admin(self, application):
-        admin = Admin(
-            engine,
-            title=self.settings.APP_NAME,
-            auth_provider=UsernameAndPasswordProvider(),
-            middlewares=[Middleware(SessionMiddleware, secret_key=self.settings.SECRET_KEY)],
-        )
         admin.mount_to(application)
-        return admin
 
     def add_middlewares(self, application):
         for middleware in self.settings.MIDDLEWARES:
@@ -226,11 +212,8 @@ class ApplicationFactory:
             name="medias",
         )
 
-    def initialize_apps(self, application, admin):
-        InstalledAppsInitializer(
-            app=application, router=router, package_name="src", installed_apps=INSTALLED_APPS, admin=admin
-        ).initialize()
-        application.include_router(router)
+    def initialize_routes(self, application):
+        RoutesInitializer(app=application, package="core.routes").initialize()
 
     def add_babel_settings(self, application):
         application.add_middleware(BabelMiddleware, babel_configs=configs)
@@ -239,8 +222,8 @@ class ApplicationFactory:
         self.setup_data()
         application = self.initialize_application()
         setup_exception_handlers(application)
-        admin = self.initialize_admin(application)
-        self.initialize_apps(application, admin=admin)
+        self.initialize_admin(application)
+        self.initialize_routes(application)
         self.add_middlewares(application)
         self.set_media_settings(application)
         self.setup_docs(application)

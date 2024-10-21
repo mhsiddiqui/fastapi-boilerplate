@@ -10,6 +10,7 @@ class Settings(
     RedisQueueSettings,  # noqa F405
     MediaSettings,  # noqa F405
     EnvironmentSettings,  # noqa F405
+    OTPSettings,  # noqa F405
 ):
     MIDDLEWARES = AppSettings.MIDDLEWARES + [  # noqa F405
         Middleware(  # noqa F405

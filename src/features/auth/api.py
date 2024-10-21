@@ -1,7 +1,7 @@
 from datetime import timedelta
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Request, Response
+from fastapi import Depends, Request, Response
 from fastapi.security import OAuth2PasswordRequestForm
 from fastcrud.exceptions.http_exceptions import UnauthorizedException
 from jose import JWTError
@@ -20,10 +20,7 @@ from src.utils.authentication import (
 
 from .schemas import Token
 
-router = APIRouter(tags=["Authentication"], prefix="/auth")
 
-
-# @router.post("/login/", response_model=Token)
 async def login_for_access_token(
     response: Response,
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
@@ -46,7 +43,6 @@ async def login_for_access_token(
     return Token(**{"access_token": access_token, "token_type": "bearer"})
 
 
-# @router.post("/refresh/")
 async def refresh_access_token(request: Request, db: AsyncSession = Depends(async_get_db)) -> Token:
     refresh_token = request.cookies.get("refresh_token")
     if not refresh_token:
@@ -60,7 +56,6 @@ async def refresh_access_token(request: Request, db: AsyncSession = Depends(asyn
     return Token(**{"access_token": new_access_token, "token_type": "bearer"})
 
 
-@router.post("/logout")
 async def logout(
     response: Response, access_token: str = Depends(oauth2_scheme), db: AsyncSession = Depends(async_get_db)
 ) -> dict[str, str]:

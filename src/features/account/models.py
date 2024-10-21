@@ -1,7 +1,7 @@
 from typing import Optional
 
 from fastapi_storages.integrations.sqlalchemy import FileType
-from sqlalchemy import String, select
+from sqlalchemy import String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from core.db.database import Base
@@ -24,12 +24,3 @@ class User(Base, TimestampMixin, SoftDeleteMixin):
     )
     is_active: Mapped[bool] = mapped_column(default=False, index=True)
     is_superuser: Mapped[bool] = mapped_column(default=False)
-
-    @classmethod
-    async def exists(cls, db, *filters):
-        query = select(User).where(*filters).limit(1)
-        result = await db.execute(query)
-        return result.first() is not None
-
-    def serialize(self) -> dict:
-        return self.__dict__

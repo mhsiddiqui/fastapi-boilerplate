@@ -1,15 +1,16 @@
+import importlib
 import inspect
 from collections.abc import Callable
 from typing import Any, Optional, Union
 
-from fastapi import Depends
+from fastapi import APIRouter, Depends
 
 
 class Route:
     def __init__(
         self,
         path: str,
-        endpoint: Union[Callable, type],
+        endpoint: Union[Callable, type, list],
         tags: Optional[list[str]] = None,
         dependencies: Optional[list[Depends]] = None,
         responses: Optional[dict[Union[int, str], dict[str, Any]]] = None,
@@ -63,28 +64,41 @@ class Route:
             **self.kwargs,
         }
 
-    def get(self):
-        routes = []
-        if inspect.isfunction(self.endpoint):
-            # Handle function-based view
-            route = self.get_route(
-                self.path, self.endpoint, self.kwargs.get("methods", ["GET"]), name=self.endpoint.__name__
-            )
-            routes.append(route)
-        else:
-            # Handle class-based view
-            endpoint = self.endpoint()
-            if not self.name:
-                chars = []
-                for char in self.endpoint.__name__:
-                    if char.isupper() and chars:  # Add underscore before uppercase letters
-                        chars.append("_")
-                    chars.append(char.lower())  # Convert to lowercase and add to the list
-                self.name = "".join(chars)
-            for route_obj in endpoint.get_routes():
-                route = self.get_route(
-                    self.path, **route_obj, name=f'{self.name}__{route_obj.get("endpoint").__name__}'
-                )
-                routes.append(route)
+    def get_included_module_routes(self):
+        router = APIRouter(prefix=self.path, tags=self.tags, **self.kwargs)
+        for route_obj in self.endpoint:
+            route_obj.add(router)
+        return router
 
-        return routes
+    def add(self, router: APIRouter):
+        if isinstance(self.endpoint, list):
+            router.include_router(self.get_included_module_routes())
+        else:
+            if inspect.isfunction(self.endpoint):
+                # Handle function-based view
+                route = self.get_route(
+                    self.path, self.endpoint, self.kwargs.get("methods", ["GET"]), name=self.endpoint.__name__
+                )
+                router.add_api_route(**route)
+            else:
+                # Handle class-based view
+                endpoint = self.endpoint()
+                if not self.name:
+                    chars = []
+                    for char in self.endpoint.__name__:
+                        if char.isupper() and chars:  # Add underscore before uppercase letters
+                            chars.append("_")
+                        chars.append(char.lower())  # Convert to lowercase and add to the list
+                    self.name = "".join(chars)
+                for route_obj in endpoint.get_routes():
+                    route = self.get_route(
+                        self.path, **route_obj, name=f'{self.name}__{route_obj.get("endpoint").__name__}'
+                    )
+                    router.add_api_route(**route)
+
+
+def include(package) -> list[Route]:
+    route_module = importlib.import_module(package)
+    if route_module:
+        return getattr(route_module, "routes", [])
+    return []

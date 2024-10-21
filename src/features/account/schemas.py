@@ -46,7 +46,7 @@ class UserCreate(UserBase, BaseSchema):
         return username
 
     async def create(self, crud, db):
-        from ..utils.authentication import get_password_hash
+        from src.utils.authentication import get_password_hash
 
         user_data = self.model_dump()
         user_data["password"] = get_password_hash(password=user_data["password"])

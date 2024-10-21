@@ -4,22 +4,19 @@ from typing import Any
 from fastapi import APIRouter, FastAPI
 
 
-class InstalledAppsInitializer:
-    def __init__(
-        self, app: FastAPI, router: APIRouter, package_name: str, installed_apps: list[str] = None, **kwargs: Any
-    ):
+class RoutesInitializer:
+    def __init__(self, app: FastAPI, package: str, prefix: str = "", tags: list[str] = None, **kwargs: Any):
         self.app = app
-        self.package_name = package_name
-        self.base_router = router
-        self.installed_apps = installed_apps or []
+        self.package = package
+        self.prefix = prefix
+        self.tags = tags
         self.kwargs = kwargs
 
     def initialize(self):
-        for app_name in self.installed_apps:
-            app_module = importlib.import_module(f"{self.package_name}.{app_name}.app")
-            installed_app = getattr(app_module, "app", None)
-            if installed_app:
-                routes_module = importlib.import_module(f"{self.package_name}.{app_name}.routes")
-                if routes_module:
-                    app_router = installed_app.init(routes=getattr(routes_module, "routes", []), **self.kwargs)
-                    self.base_router.include_router(app_router)
+        router = APIRouter(prefix=self.prefix, tags=self.tags, **self.kwargs)
+        route_module = importlib.import_module(self.package)
+        if route_module:
+            routes = getattr(route_module, "routes", [])
+            for route_obj in routes:
+                route_obj.add(router)
+        self.app.include_router(router)

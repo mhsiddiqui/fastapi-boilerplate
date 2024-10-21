@@ -5,9 +5,10 @@ from alembic.config import Config
 from cmd_manager import ManagementCommandSystem
 
 from core.application import app
+from core.db.database import get_sync_db
 from core.settings import settings
 
-management_system = ManagementCommandSystem(app=app)
+management_system = ManagementCommandSystem(app=app, db=get_sync_db())
 management_system.register(package="src.scripts")
 
 cli_system = management_system.create_cli()

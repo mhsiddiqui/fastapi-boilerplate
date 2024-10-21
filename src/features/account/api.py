@@ -5,8 +5,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.db.database import async_get_db
 from core.easy_router.base_cbv import BaseView
-from src.utils.dependencies import get_current_user
 
+from ...utils.authentication import get_current_user
 from .crud import crud_users
 from .schemas import UserCreate, UserRead, UserUpdate
 

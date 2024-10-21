@@ -5,6 +5,7 @@ from core.settings.dev import settings
 env = Environment(loader=PackageLoader("", package_path=settings.TEMPLATES_DIR), autoescape=select_autoescape())
 
 
-def render(template_name: str, **kwargs) -> str:
+def render(template_name: str, context: dict = None) -> str:
+    context = context or {}
     template = env.get_template(template_name)
-    return template.render(**kwargs)
+    return template.render(**context)
