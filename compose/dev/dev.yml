@@ -137,5 +137,6 @@ services:
 
 volumes:
   media_data:
+  production_traefik:
 #  postgres_data:
 #  postgres_data_backups:
