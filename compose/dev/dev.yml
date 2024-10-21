@@ -16,8 +16,8 @@ services:
       - "8000:8000"
 #    depends_on:
 #      - postgres
-    expose:
-       - "8000"
+#    expose:
+#       - "8000"
     volumes:
       - media_data:/code/medias
 
