@@ -56,6 +56,15 @@ class DatabaseSettings(BaseSettings):
     POSTGRES_URL: str | None = config("POSTGRES_URL", default=None)
 
 
+class AWSSettings(BaseSettings):
+    AWS_ACCESS_KEY_ID: str = config("AWS_ACCESS_KEY_ID", default="")
+    AWS_SECRET_ACCESS_KEY: str = config("AWS_SECRET_ACCESS_KEY", default="")
+    AWS_S3_BUCKET_NAME: str = config("AWS_S3_BUCKET_NAME", default="bucket-name")
+    AWS_S3_ENDPOINT_URL: str = config("AWS_S3_ENDPOINT_URL", default="s3.amazonaws.com")
+    AWS_DEFAULT_ACL: str = config("AWS_DEFAULT_ACL", default="public-read")
+    AWS_S3_USE_SSL: bool = config("AWS_S3_USE_SSL", default=True)
+
+
 class RedisCacheSettings(BaseSettings):
     REDIS_CACHE_HOST: str = config("REDIS_CACHE_HOST", default="localhost")
     REDIS_CACHE_PORT: int = config("REDIS_CACHE_PORT", default=6379)
