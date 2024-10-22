@@ -1,7 +1,7 @@
 from pydoc import locate
 from typing import Any
 
-from fastapi_storages import S3Storage
+from fastapi_storages import FileSystemStorage, S3Storage
 
 from .settings import settings
 
@@ -17,4 +17,6 @@ class PublicAssetS3Storage(S3Storage):
 
 def get_storage_class(path) -> Any:
     storage_class = locate(settings.MEDIA_STORAGE)
-    return storage_class(path=f"{settings.MEDIA_ROOT}/{path}")
+    if storage_class == FileSystemStorage:
+        return storage_class(path=f"{settings.MEDIA_ROOT}/{path}")
+    return storage_class()
