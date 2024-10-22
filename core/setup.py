@@ -17,7 +17,7 @@ from src.utils.exceptions.handlers import setup_exception_handlers
 
 from .admin import admin
 from .cache import cache
-from .easy_router.initializer import RoutesInitializer
+from .easy_router.initializer import AppsInitializer, RoutesInitializer
 from .settings import setting_class, settings
 from .settings.base import (
     AppSettings,
@@ -218,13 +218,17 @@ class ApplicationFactory:
     def add_babel_settings(self, application):
         application.add_middleware(BabelMiddleware, babel_configs=configs)
 
+    def initialize_apps(self, application):
+        AppsInitializer(app=application, package="src", installed_apps=INSTALLED_APPS).initialize()
+
     def init(self):
         self.setup_data()
         application = self.initialize_application()
         setup_exception_handlers(application)
         self.initialize_admin(application)
         self.initialize_routes(application)
+        self.initialize_apps(application)
         self.add_middlewares(application)
-        self.set_media_settings(application)
+        # self.set_media_settings(application)
         self.setup_docs(application)
         return application
