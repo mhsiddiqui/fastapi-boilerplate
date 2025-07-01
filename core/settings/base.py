@@ -29,6 +29,7 @@ class AppSettings(BaseSettings):
     CONTACT_EMAIL: str | None = config("CONTACT_EMAIL", default=None)
     MIDDLEWARES: list[Middleware] = []
     TEMPLATES_DIR: str = str(BASE_DIR / "src" / "templates")
+    INSTALLED_APPS: list[str] = ["features.auth", "features.account"]
 
 
 class MediaSettings(BaseSettings):

@@ -33,5 +33,8 @@ async def async_get_db() -> AsyncSession:
 
 
 def get_sync_db():
+    """
+    Syncdb engine which will be used for management commands
+    """
     engine = create_engine(SYNC_DATABASE_URL, echo=False)
     return Session(engine)

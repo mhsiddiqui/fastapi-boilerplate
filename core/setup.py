@@ -1,6 +1,5 @@
-import queue
-from collections.abc import AsyncGenerator, Callable
-from contextlib import _AsyncGeneratorContextManager, asynccontextmanager
+from collections.abc import AsyncGenerator
+from contextlib import asynccontextmanager
 from typing import Any
 
 import fastapi
@@ -8,7 +7,6 @@ from fastapi import APIRouter, Depends, FastAPI
 from fastapi.openapi.docs import get_redoc_html, get_swagger_ui_html
 from fastapi.openapi.utils import get_openapi
 from fastapi_babel import Babel, BabelConfigs, BabelMiddleware
-from starlette.staticfiles import StaticFiles
 
 from core.db.database import Base
 from core.db.database import async_engine as engine
@@ -16,7 +14,6 @@ from src.utils.authentication import get_current_superuser
 from src.utils.exceptions.handlers import setup_exception_handlers
 
 from .admin import admin
-from .cache import cache
 from .easy_router.initializer import AppsInitializer, RoutesInitializer
 from .settings import setting_class, settings
 from .settings.base import (
@@ -24,8 +21,6 @@ from .settings.base import (
     DatabaseSettings,
     EnvironmentOption,
     EnvironmentSettings,
-    RedisCacheSettings,
-    RedisQueueSettings,
 )
 
 configs = BabelConfigs(
@@ -37,8 +32,6 @@ configs = BabelConfigs(
 )
 babel = Babel(configs=configs)
 
-INSTALLED_APPS = ["features.auth", "features.account", "features.otp"]
-
 
 # -------------- database --------------
 async def create_tables() -> None:
@@ -46,59 +39,18 @@ async def create_tables() -> None:
         await conn.run_sync(Base.metadata.create_all)
 
 
-# -------------- cache --------------
-async def create_redis_cache_pool() -> None:
-    if isinstance(settings, RedisCacheSettings):
-        import redis.asyncio as redis
-
-        cache.pool = redis.ConnectionPool.from_url(settings.REDIS_CACHE_URL)
-        cache.client = redis.Redis.from_pool(cache.pool)  # type: ignore
-
-
-async def close_redis_cache_pool() -> None:
-    if isinstance(settings, RedisCacheSettings):
-        await cache.client.aclose()  # type: ignore
-
-
-# # -------------- queue --------------
-async def create_redis_queue_pool() -> None:
-    if isinstance(settings, RedisQueueSettings):
-        from arq import connections, create_pool
-
-        queue.pool = await create_pool(
-            connections.RedisSettings(host=settings.REDIS_QUEUE_HOST, port=settings.REDIS_QUEUE_PORT)
-        )
-
-
-async def close_redis_queue_pool() -> None:
-    if isinstance(settings, RedisQueueSettings):
-        await queue.pool.aclose()  # type: ignore
-
-
 def lifespan_factory(
-    settings: setting_class,
+    app_settings: setting_class,
     create_tables_on_start: bool = True,
-) -> Callable[[FastAPI], _AsyncGeneratorContextManager[Any]]:
+) -> Any:
     """Factory to create a lifespan async context manager for a FastAPI app."""
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncGenerator:
-        if isinstance(settings, DatabaseSettings) and create_tables_on_start:
+        if isinstance(app_settings, DatabaseSettings) and create_tables_on_start:
             await create_tables()
 
-        if isinstance(settings, RedisCacheSettings):
-            await create_redis_cache_pool()
-
-        if isinstance(settings, RedisQueueSettings):
-            await create_redis_queue_pool()
-
         yield
-
-        if isinstance(settings, RedisCacheSettings):
-            await close_redis_cache_pool()
-
-        if isinstance(settings, RedisQueueSettings):
-            await close_redis_queue_pool()
 
     return lifespan
 
@@ -146,8 +98,6 @@ class ApplicationFactory:
 
     def __init__(
         self,
-        # router: APIRouter,
-        settings: setting_class,
         create_tables_on_start: bool = True,
         **kwargs: Any,
     ) -> None:
@@ -205,13 +155,6 @@ class ApplicationFactory:
 
                 application.include_router(docs_router)
 
-    def set_media_settings(self, application):
-        application.mount(
-            settings.MEDIA_URL,
-            StaticFiles(directory=str(settings.BASE_DIR / settings.MEDIA_ROOT), check_dir=True),
-            name="medias",
-        )
-
     def initialize_routes(self, application):
         RoutesInitializer(app=application, package="core.routes").initialize()
 
@@ -229,6 +172,5 @@ class ApplicationFactory:
         self.initialize_routes(application)
         self.initialize_apps(application)
         self.add_middlewares(application)
-        # self.set_media_settings(application)
         self.setup_docs(application)
         return application

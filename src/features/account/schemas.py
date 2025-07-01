@@ -1,13 +1,12 @@
 from datetime import datetime
-from typing import Annotated, Optional, Union
+from typing import Annotated, Union
 
-from fastapi import Form, UploadFile
-from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_serializer
+from fastapi import Form
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 from src.utils.constants import Messages
 from src.utils.exceptions.http_exceptions import CustomValidationException
 from src.utils.schemas import BaseSchema
-from src.utils.util_methods import UtilMethods
 
 
 class UserBase(BaseModel):
@@ -22,11 +21,6 @@ class UserRead(BaseModel):
     name: Annotated[str, Field(min_length=2, max_length=30, examples=["User Userson"])]
     username: Annotated[str, Field(min_length=2, max_length=20, pattern=r"^[a-z0-9]+$", examples=["userson"])]
     email: Annotated[EmailStr, Field(examples=["user.userson@example.com"])]
-    profile_image: Optional[str] = None
-
-    @field_serializer("profile_image")
-    def serialize_profile_image(self, profile_image: str, _info):
-        return UtilMethods.get_absolute_url(profile_image)
 
 
 class UserCreate(UserBase, BaseSchema):
@@ -60,20 +54,12 @@ class UserCreateInternal(UserBase):
 
 class UserUpdate(BaseSchema):
     model_config = ConfigDict(extra="forbid")
-    # name: Annotated[str | None, Field(min_length=2, max_length=30, examples=["User Userberg"], default=None)]
     name: Annotated[Union[str, None], Form()] = None
-    profile_image: Annotated[bytes | None, UploadFile] = None
 
     async def update(self, crud, db, **kwargs):
         data = self.model_dump()
-        if not data.get("profile_image"):
-            data.pop("profile_image", None)
         updated: UserRead = await crud.update(db=db, object=data, **kwargs)
         return updated
-
-
-class UserTierUpdate(BaseModel):
-    tier_id: int
 
 
 class UserDelete(BaseModel):

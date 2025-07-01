@@ -20,7 +20,6 @@ from src.features.account.crud import crud_users
 from src.features.auth.crud import crud_token_blacklist
 from src.features.auth.schemas import TokenBlacklistCreate, TokenData
 from src.utils.constants import Messages
-from src.utils.util_methods import UtilMethods
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
 logger = logging.getLogger(__name__)
@@ -159,10 +158,7 @@ class UsernameAndPasswordProvider(AuthProvider):
 
     def get_admin_user(self, request: Request) -> AdminUser:
         user = json.loads(request.state.user)  # Retrieve current user
-        photo_url = None
-        if user.get("profile_photo") is not None:
-            photo_url = UtilMethods.get_absolute_url(user["profile_photo"])
-        return AdminUser(username=user["name"], photo_url=photo_url)
+        return AdminUser(username=user["name"])
 
     async def logout(self, request: Request, response: Response) -> Response:
         request.session.clear()
