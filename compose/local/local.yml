@@ -1,0 +1,101 @@
+# Local development stack.
+# Run from the repo root:
+#   docker compose --env-file .env -f compose/local/local.yml up --build
+#
+# `--env-file .env` is needed so ${VAR} interpolation reads the repo-root .env
+# (Compose otherwise looks for a .env next to the compose file).
+#
+# Notes:
+#   * `web` mounts the repo into /code so uvicorn --reload picks up edits.
+#   * POSTGRES_SERVER / REDIS_*_HOST are overridden to point at the in-network
+#     service names (postgres / redis) — your local .env keeps 127.0.0.1 for
+#     running outside of Docker.
+
+x-app-env: &app-env
+  env_file:
+    - ../../.env
+  environment:
+    POSTGRES_SERVER: postgres
+    POSTGRES_PORT: "5432"
+    REDIS_CACHE_HOST: redis
+    REDIS_CACHE_PORT: "6379"
+    REDIS_QUEUE_HOST: redis
+    REDIS_QUEUE_PORT: "6379"
+
+services:
+  web:
+    <<: *app-env
+    build:
+      context: ../../
+      dockerfile: compose/local/app/Dockerfile
+    image: fastapi-boilerplate-local
+    command: uvicorn src.core.setup:app --host 0.0.0.0 --port 8000 --reload
+    ports:
+      - "8000:8000"
+    volumes:
+      - ../../:/code
+      - media_data:/code/medias
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+  worker:
+    <<: *app-env
+    image: fastapi-boilerplate-local
+    command: dramatiq --processes 1 --threads 4 src.tasks
+    volumes:
+      - ../../:/code
+    depends_on:
+      web:
+        condition: service_started
+      redis:
+        condition: service_started
+
+  postgres:
+    image: postgres:16
+    env_file:
+      - ../../.env
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
+      POSTGRES_DB: ${POSTGRES_DB:-db_name}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+
+  # ----- optional: uncomment to run pgadmin -----
+  # pgadmin:
+  #   image: dpage/pgadmin4:latest
+  #   restart: unless-stopped
+  #   ports:
+  #     - "5050:80"
+  #   env_file:
+  #     - ../../.env
+  #   environment:
+  #     PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
+  #     PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
+  #   volumes:
+  #     - pgadmin_data:/var/lib/pgadmin
+  #   depends_on:
+  #     - postgres
+
+volumes:
+  media_data:
+  postgres_data:
+  redis_data:
+  # pgadmin_data:

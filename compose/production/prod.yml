@@ -1,0 +1,141 @@
+# Production stack with Traefik (TLS via Let's Encrypt, HTTP→HTTPS redirect).
+# Run from the repo root:
+#   docker compose --env-file .env -f compose/production/prod.yml up -d --build
+#
+# `--env-file .env` makes ${VAR} interpolation read the repo-root .env
+# (Compose otherwise looks for a .env next to the compose file).
+#
+# Required env:
+#   DOMAIN_NAME          — e.g. api.example.com
+#   LETSENCRYPT_EMAIL    — contact email for ACME registration
+#   POSTGRES_USER / POSTGRES_PASSWORD / POSTGRES_DB
+#   TRAEFIK_DASHBOARD_HOST + TRAEFIK_DASHBOARD_AUTH (only if enabling dashboard)
+#
+# Traefik runs in Docker-provider mode: services opt in via `traefik.enable=true`
+# labels and declare their own routers/services/middlewares. There is no static
+# route file to keep in sync.
+
+x-app-env: &app-env
+  env_file:
+    - ../../.env
+  environment:
+    POSTGRES_SERVER: postgres
+    POSTGRES_PORT: "5432"
+    REDIS_CACHE_HOST: redis
+    REDIS_CACHE_PORT: "6379"
+    REDIS_QUEUE_HOST: redis
+    REDIS_QUEUE_PORT: "6379"
+
+services:
+  web:
+    <<: *app-env
+    build:
+      context: ../../
+      dockerfile: compose/production/app/Dockerfile
+    image: fastapi-boilerplate-prod
+    restart: unless-stopped
+    volumes:
+      - media_data:/code/medias
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    networks:
+      - edge
+      - internal
+    expose:
+      - "8000"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=edge"
+      # https router
+      - "traefik.http.routers.web.rule=Host(`${DOMAIN_NAME}`)"
+      - "traefik.http.routers.web.entrypoints=websecure"
+      - "traefik.http.routers.web.tls=true"
+      - "traefik.http.routers.web.tls.certresolver=letsencrypt"
+      - "traefik.http.services.web.loadbalancer.server.port=8000"
+
+  worker:
+    <<: *app-env
+    image: fastapi-boilerplate-prod
+    restart: unless-stopped
+    command: dramatiq --processes 2 --threads 8 src.tasks
+    depends_on:
+      web:
+        condition: service_started
+      redis:
+        condition: service_started
+    networks:
+      - internal
+
+  postgres:
+    image: postgres:16
+    restart: unless-stopped
+    env_file:
+      - ../../.env
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+    networks:
+      - internal
+
+  traefik:
+    build:
+      context: ../../
+      dockerfile: compose/production/traefik/Dockerfile
+    image: fastapi-boilerplate-traefik
+    restart: unless-stopped
+    environment:
+      # Traefik picks up TRAEFIK_* env vars as static-config overrides.
+      TRAEFIK_CERTIFICATESRESOLVERS_LETSENCRYPT_ACME_EMAIL: ${LETSENCRYPT_EMAIL}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - traefik_acme:/etc/traefik/acme
+    networks:
+      - edge
+    labels:
+      - "traefik.enable=true"
+      # Dashboard is OFF by default. To expose it:
+      #   1. set TRAEFIK_DASHBOARD_HOST=traefik.example.com in .env (with DNS pointing here)
+      #   2. set TRAEFIK_DASHBOARD_AUTH to an htpasswd string (escape `$` as `$$`)
+      #   3. uncomment the labels below
+      # - "traefik.http.routers.dashboard.rule=Host(`${TRAEFIK_DASHBOARD_HOST:-traefik.localhost}`)"
+      # - "traefik.http.routers.dashboard.entrypoints=websecure"
+      # - "traefik.http.routers.dashboard.tls=true"
+      # - "traefik.http.routers.dashboard.tls.certresolver=letsencrypt"
+      # - "traefik.http.routers.dashboard.service=api@internal"
+      # - "traefik.http.routers.dashboard.middlewares=dashboard-auth"
+      # - "traefik.http.middlewares.dashboard-auth.basicauth.users=${TRAEFIK_DASHBOARD_AUTH:-}"
+
+volumes:
+  media_data:
+  postgres_data:
+  redis_data:
+  traefik_acme:
+
+networks:
+  edge:
+    driver: bridge
+  internal:
+    driver: bridge
+    internal: false
